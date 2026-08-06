@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ResumeFiler</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="popup">
+  <header class="popup-header">
+    <div class="popup-logo" id="logo"></div>
+    <div class="grow">
+      <div class="popup-title">ResumeFiler</div>
+      <div class="popup-sub" id="version">2.1</div>
+    </div>
+    <button class="icon-btn" id="theme-btn" title="Theme"></button>
+    <button class="icon-btn" id="dashboard-btn" title="Open the dashboard"></button>
+  </header>
+
+  <div class="popup-body">
+    <!-- What we can see on the current tab -->
+    <section class="page-card" id="page-card">
+      <div class="page-host" id="page-host">
+        <span class="dot" id="page-dot" style="color:var(--text-faint)"></span>
+        <span class="truncate" id="page-host-text">Checking this page…</span>
+      </div>
+      <div class="page-state" id="page-state">&nbsp;</div>
+    </section>
+
+    <!-- Primary action -->
+    <div class="actions-grid">
+      <button id="fill-btn" class="btn btn-brand btn-lg btn-full">
+        <span id="fill-icon"></span>
+        <span id="fill-label">Fill this page</span>
+      </button>
+
+      <div class="quick-grid">
+        <button class="quick" id="steps-btn" title="Fill each step and click Next. Never submits.">
+          <span data-icon="steps"></span>Steps
+        </button>
+        <button class="quick" id="review-btn" title="Outline every field that is still empty">
+          <span data-icon="search"></span>Empty
+        </button>
+        <button class="quick" id="undo-btn" title="Put everything back the way it was" disabled>
+          <span data-icon="undo"></span>Undo
+        </button>
+      </div>
+    </div>
+
+    <!-- Setup nudge, only while something is missing -->
+    <section class="page-card hidden" id="setup-card">
+      <div class="row-between mb-2">
+        <span class="text-sm" style="font-weight:600">Profile <span id="complete-pct">0%</span> ready</span>
+        <button class="btn btn-sm btn-ghost" id="setup-link">Finish setup</button>
+      </div>
+      <div class="progress"><span id="complete-bar" style="width:0%"></span></div>
+      <div class="page-state mt-2" id="setup-missing"></div>
+    </section>
+
+    <!-- Switches and status -->
+    <section class="status-section">
+      <div class="status-row">
+        <span class="status-label">Fill automatically</span>
+        <label class="switch">
+          <input type="checkbox" id="autofill-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="status-row">
+        <span class="status-label truncate" id="site-label">Enabled on this site</span>
+        <label class="switch">
+          <input type="checkbox" id="site-toggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="status-row" style="flex-direction:column;align-items:stretch;gap:4px">
+        <div class="row-between">
+          <span class="status-label">Resume</span>
+          <div class="row gap-1">
+            <span id="resume-badge" class="badge badge-danger">Missing</span>
+            <button class="btn btn-sm" id="resume-upload-btn" title="Pick a new resume PDF">
+              <span data-icon="upload"></span><span id="resume-upload-label">Upload</span>
+            </button>
+          </div>
+        </div>
+        <div id="resume-filename" class="file-name hidden">resume.pdf</div>
+        <input type="file" id="resume-file-input" accept="application/pdf" class="hidden">
+      </div>
+
+      <div class="status-row">
+        <span class="status-label">AI for unknown fields</span>
+        <span id="ai-badge" class="badge badge-warning">Off</span>
+      </div>
+    </section>
+
+    <!-- Tracker at a glance -->
+    <section class="mini-stats">
+      <div class="mini-stat"><b id="stat-week">0</b><span>this week</span></div>
+      <div class="mini-stat"><b id="stat-total">0</b><span>tracked</span></div>
+      <div class="mini-stat"><b id="stat-learned">0</b><span>learned</span></div>
+    </section>
+
+    <div class="footer-text" id="footer-text">
+      Stored on this device &middot; <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>F</kbd>
+    </div>
+  </div>
+
+  <footer class="made-by">
+    <span>Made by <strong>Rishit Goel</strong></span>
+    <span class="sep">&middot;</span>
+    <a class="feedback-link" id="feedback-link" href="#" title="Email me a bug, an error or an idea">
+      <span id="feedback-icon"></span>Feedback
+    </a>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

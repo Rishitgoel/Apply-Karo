@@ -1,0 +1,332 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ResumeFiler — feature harness</title>
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:0;display:grid;grid-template-columns:1fr 1fr;height:100vh}
+  #stage{padding:18px;overflow:auto;border-right:1px solid #ddd}
+  #out{padding:18px;overflow:auto;background:#0f172a;color:#e2e8f0;font:12px/1.6 ui-monospace,monospace}
+  fieldset{margin:0 0 14px;border:1px solid #ccc;border-radius:6px;padding:10px}
+  legend{font-weight:600}
+  label{display:block;margin:6px 0 2px;font-size:13px}
+  input,select{width:100%;padding:5px;box-sizing:border-box}
+  .row{display:flex;gap:6px}
+  .card{border:1px dashed #bbb;border-radius:5px;padding:8px;margin-bottom:8px}
+  .ok{color:#4ade80}.no{color:#f87171}.dim{color:#64748b}
+  h2{margin:16px 0 6px;font-size:12px;color:#93c5fd;text-transform:uppercase;letter-spacing:.05em}
+  table{border-collapse:collapse;width:100%}td,th{padding:2px 8px;text-align:left;border-bottom:1px solid #1e293b;vertical-align:top}
+</style>
+
+<div id="stage"></div>
+<div id="out">Running…</div>
+
+<script type="module">
+  import { scan, invalidateShadowCache } from "../src/engine/scan.js";
+  import { assign, RULE_BY_ID } from "../src/shared/rules.js";
+  import { fillSync } from "../src/engine/fill.js";
+  import { resolvePath } from "../src/shared/schema.js";
+  import { splitPhone } from "../src/shared/values.js";
+  import { runSteps, isSubmitLike, findAdvanceButton, hasStepIndicator } from "../src/engine/steps.js";
+  // The real resolver, not a copy — so this harness cannot pass against logic
+  // that only exists in the test.
+  import { ruleValue, jobDescriptionFromPage, MIN_JD_CHARS } from "../src/engine/index.js";
+
+  const profile = {
+    personal: { firstName: "Rishit", lastName: "Goel", fullName: "Rishit Goel",
+      email: "rishitgoel259@gmail.com", phone: "+91 9996007259",
+      linkedin: "https://linkedin.com/in/rishitgoel124", github: "https://github.com/Rishitgoel",
+      authorizedToWork: "Yes", sponsorshipRequired: "No" },
+    education: [
+      { school: "Delhi Technological University (DTU)", degree: "B.Tech", endDate: "May 2027" },
+      { school: "Modern Public School", degree: "High School", endDate: "May 2023" },
+      { school: "Third Institute", degree: "Associate's Degree", endDate: "May 2021" }
+    ],
+    experience: [], summary: "", skills: "",
+    customFields: { "salary expectation": "Negotiable" }
+  };
+
+  const stage = document.getElementById("stage");
+  const results = [];
+  const check = (desc, got, want) => results.push([desc, String(got), String(want)]);
+
+  /** Replace the stage so each probe runs against a clean document. */
+  function mount(html) {
+    stage.innerHTML = html;
+    invalidateShadowCache();
+  }
+
+  /** The real pipeline: scan → assign → resolve → fill. */
+  function fillAll() {
+    const fields = scan();
+    const assigned = assign(fields, { skipSensitive: true, hasAnswerFor: () => false });
+    const hasCode = [...assigned.values()].some(h => h.ruleId === "phoneCountryCode");
+    let filled = 0;
+    for (let i = 0; i < fields.length; i++) {
+      const hit = assigned.get(i); if (!hit) continue;
+      let v = ruleValue(hit.ruleId, profile, hit.instance);
+      if (!v) continue;
+      if (hit.ruleId === "phone" && hasCode) v = splitPhone(v).national || v;
+      if (fillSync(fields[i], v, hit.ruleId)) filled++;
+    }
+    return { filled, total: fields.length, fields, assigned };
+  }
+
+  const val = s => document.querySelector(s)?.value ?? "(missing)";
+  const sel = s => { const e = document.querySelector(s); return e ? (e.options[e.selectedIndex]?.text ?? "") : "(missing)"; };
+
+  // ── 1a. Repeated cards, structural only (no index anywhere in the markup) ──
+  mount(`<fieldset><legend>Education</legend>
+    ${[0,1,2].map(() => `<div class="card"><label>School</label><input name="school">
+      <label>Degree</label><input name="degree"></div>`).join("")}
+    </fieldset>`);
+  let r = fillAll();
+  check("repeat: 3 structural cards get 3 schools",
+    JSON.stringify([...document.querySelectorAll("input[name=school]")].map(e => e.value)),
+    JSON.stringify(["Delhi Technological University (DTU)", "Modern Public School", "Third Institute"]));
+  check("repeat: instances are 0,1,2",
+    JSON.stringify(r.fields.filter(f => f.name === "school").map(f => f.instance)), "[0,1,2]");
+
+  // ── 1b. Two independent repeaters must not consume each other's slots ──
+  mount(`<fieldset><legend>Education</legend>
+      <div class="card"><label>School</label><input name="school" id="sA0"></div>
+      <div class="card"><label>School</label><input name="school" id="sA1"></div>
+    </fieldset>
+    <fieldset><legend>Education History</legend>
+      <div class="card"><label>School</label><input name="educations[0][school]" id="sB0"></div>
+      <div class="card"><label>School</label><input name="educations[1][school]" id="sB1"></div>
+    </fieldset>`);
+  fillAll();
+  check("repeat: first group indexes 0,1", `${val("#sA0")} | ${val("#sA1")}`,
+    "Delhi Technological University (DTU) | Modern Public School");
+  check("repeat: second group also indexes 0,1", `${val("#sB0")} | ${val("#sB1")}`,
+    "Delhi Technological University (DTU) | Modern Public School");
+
+  // ── 1c. Sibling fieldsets are NOT a repeat group ──
+  mount(`<fieldset><legend>Education</legend><label for="s1">School</label><input id="s1" name="school"></fieldset>
+         <fieldset><legend>Contact</legend><label for="e1">Email</label><input id="e1" name="email" type="email"></fieldset>
+         <fieldset><legend>Links</legend><label for="l1">LinkedIn</label><input id="l1" name="linkedin"></fieldset>`);
+  r = fillAll();
+  check("repeat: plain sibling fieldsets stay at instance 0",
+    JSON.stringify([...new Set(r.fields.map(f => f.instance))]), "[0]");
+  check("repeat: they still fill", `${val("#s1") ? "y" : "n"}${val("#e1") ? "y" : "n"}${val("#l1") ? "y" : "n"}`, "yyy");
+
+  // ── 2. Phone split across a code dropdown and a number box ──
+  mount(`<fieldset><legend>Contact</legend>
+    <label for="cc">Country Code</label>
+    <select id="cc" name="country_code"><option value="">--</option>
+      <option value="1">United States (+1)</option>
+      <option value="91">India (+91)</option></select>
+    <label for="pn">Phone Number</label><input id="pn" name="phone" type="tel"></fieldset>`);
+  fillAll();
+  check("phone: code dropdown", sel("#cc"), "India (+91)");
+  check("phone: number box carries no code", val("#pn"), "9996007259");
+
+  // Without a code field the number keeps its prefix.
+  mount(`<label for="pn">Phone Number</label><input id="pn" name="phone" type="tel">`);
+  fillAll();
+  check("phone: alone, keeps the +91", val("#pn"), "+91 9996007259");
+
+  // ── 3. Dates, one control shape per probe ──
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  mount(`<fieldset><legend>Graduation Date</legend><div class="row">
+    <select name="grad_month" aria-label="Month"><option value="">Month</option>${MONTHS.map(m=>`<option>${m}</option>`).join("")}</select>
+    <select name="grad_day" aria-label="Day"><option value="">Day</option><option>1</option><option>14</option></select>
+    <select name="grad_year" aria-label="Year"><option value="">Year</option>${[2025,2026,2027,2028].map(y=>`<option>${y}</option>`).join("")}</select>
+    </div></fieldset>`);
+  r = fillAll();
+  check("date: month/day/year merged into one field",
+    r.fields.find(f => f.kind === "dategroup")?.parts.map(p => p.part).join("/") ?? "(not grouped)", "month/day/year");
+  check("date: month select", sel("[name=grad_month]"), "May");
+  check("date: year select", sel("[name=grad_year]"), "2027");
+
+  mount(`<fieldset><legend>Education</legend><label for="gd">Graduation Date</label>
+    <input type="date" id="gd" name="graduation_date"></fieldset>`);
+  fillAll();
+  check("date: native input[type=date]", val("#gd"), "2027-05-01");
+
+  mount(`<fieldset><legend>Education</legend><label for="gt">Graduation Date</label>
+    <input type="text" id="gt" name="graduation_date" placeholder="MM/YYYY"></fieldset>`);
+  fillAll();
+  check("date: text honours the MM/YYYY placeholder", val("#gt"), "05/2027");
+
+  mount(`<fieldset><legend>Education</legend><label for="gt2">Graduation Date</label>
+    <input type="text" id="gt2" name="graduation_date" placeholder="DD/MM/YYYY"></fieldset>`);
+  fillAll();
+  check("date: text honours the DD/MM/YYYY placeholder", val("#gt2"), "01/05/2027");
+
+  // ── 4. Multi-step, driven through the real steps.js ──
+  check("guard: 'Submit Application' is submit-like", isSubmitLike("Submit Application"), "true");
+  check("guard: 'Save and Continue' is not", isSubmitLike("Save and Continue"), "false");
+  check("guard: 'Apply Now' is submit-like", isSubmitLike("Apply Now"), "true");
+
+  let submitted = false, step = 1;
+  mount(`<fieldset><legend>Application</legend>
+      <div id="body">
+        <label for="w1">First Name</label><input id="w1" name="first_name">
+        <label for="w2">Email</label><input id="w2" name="email" type="email" required>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button type="button" id="next">Next</button>
+        <button type="button" id="send">Submit Application</button>
+      </div></fieldset>`);
+  document.getElementById("send").addEventListener("click", () => { submitted = true; });
+  document.getElementById("next").addEventListener("click", () => {
+    if (step >= 3) { document.getElementById("next").remove(); return; }
+    step++;
+    document.getElementById("body").innerHTML = step === 2
+      ? `<label for="w3">LinkedIn Profile</label><input id="w3" name="linkedin">`
+      : `<label for="w5">Salary Expectation</label><input id="w5" name="salary_expectation">`;
+  });
+
+  const stepRes = await runSteps(async () => fillAll(), {
+    max: 6, settleMs: 20,
+    onAdvance: async () => { await new Promise(r => setTimeout(r, 20)); return true; }
+  });
+
+  check("steps: Submit was never clicked", submitted, "false");
+  check("steps: reached the final step", step, "3");
+  check("steps: later-step fields were filled", val("#w5"), "Negotiable");
+  check("steps: stopped once no Next remained", /no Next button/.test(stepRes.trail.join(" ")), "true");
+  check("steps: closes by handing the submit back to you",
+    /submit it yourself/.test(stepRes.trail[stepRes.trail.length - 1]), "true");
+
+  // Guard 1b: a submit-typed control posts the form. On a wizard that advances a
+  // step; on an ordinary form it sends the application, and the button alone
+  // cannot tell you which. Only trust it when the page says it has steps.
+  mount(`<form><label for="z1">Name</label><input id="z1" name="full_name">
+    <button type="submit" id="cont">Continue</button></form>`);
+  let adv = findAdvanceButton();
+  check("guard: type=submit 'Continue' blocked with no step indicator", !!adv?.blocked, "true");
+  check("guard: and it says why", /submits the form/.test(adv?.blocked || ""), "true");
+
+  mount(`<div class="stepper"><span aria-current="step">2</span></div>
+    <form><label for="z2">Name</label><input id="z2" name="full_name">
+    <button type="submit" id="cont2">Continue</button></form>`);
+  check("guard: step indicator is detected", hasStepIndicator(document), "true");
+  adv = findAdvanceButton();
+  check("guard: same button allowed once steps are evident", adv?.text ?? "(blocked)", "Continue");
+
+  mount(`<button type="button" id="s1">Submit Application</button>
+         <button type="button" id="s2">Apply Now</button>
+         <button type="button" id="s3">Finish</button>`);
+  check("guard: no submit-like button is ever chosen", findAdvanceButton() === null, "true");
+
+  // Guard 2: a required field left empty halts the walk.
+  step = 1; submitted = false;
+  mount(`<fieldset><legend>Application</legend>
+      <label for="q1">Why do you want this role?</label><input id="q1" name="essay_question" required>
+      <button type="button" id="next2">Next</button></fieldset>`);
+  let clicked = false;
+  document.getElementById("next2").addEventListener("click", () => { clicked = true; });
+  const blocked = await runSteps(async () => fillAll(), { max: 3, settleMs: 10 });
+  check("steps: empty required field blocks advancing", clicked, "false");
+  check("steps: and says so", /required field/.test(blocked.trail.join(" ")), "true");
+
+  // ── ARIA-only controls (Google Forms and most design systems) ──
+  // No <input>, no name=, no <label for>. Everything is a div with a role, the
+  // question sits in an aria-labelledby heading, and state lives in
+  // aria-checked. A scanner that only understands native controls sees nothing
+  // fillable here and reports an empty page.
+  mount(`
+    <div role="listitem">
+      <div id="q1"><span>Full name</span></div>
+      <div role="textbox" aria-labelledby="q1" contenteditable="true" id="gf-name"></div>
+    </div>
+    <div role="listitem">
+      <div id="q2"><span>Email address</span></div>
+      <div role="textbox" aria-labelledby="q2" contenteditable="true" id="gf-mail"></div>
+    </div>
+    <div role="listitem">
+      <div id="q3"><span>Are you legally authorized to work in the United States?</span></div>
+      <div role="radiogroup" aria-labelledby="q3" id="gf-auth">
+        <div role="radio" aria-label="Yes" aria-checked="false" id="gf-yes"></div>
+        <div role="radio" aria-label="No" aria-checked="false" id="gf-no"></div>
+      </div>
+    </div>`);
+
+  // Widgets commit on click, like the real thing.
+  for (const r of document.querySelectorAll('#gf-auth [role=radio]')) {
+    r.addEventListener("click", () => {
+      document.querySelectorAll('#gf-auth [role=radio]')
+        .forEach(o => o.setAttribute("aria-checked", String(o === r)));
+    });
+  }
+
+  r = fillAll();
+  const gfFields = r.fields.filter(f => f.el.closest?.("[role=listitem]"));
+  check("aria: all three questions are seen", gfFields.length, "3");
+  check("aria: radiogroup is one field, not two",
+    gfFields.filter(f => f.kind === "radiogroup").length, "1");
+  check("aria: group carries both options",
+    gfFields.find(f => f.kind === "radiogroup")?.options.length ?? 0, "2");
+  check("aria: question resolved from aria-labelledby",
+    (gfFields.find(f => f.kind === "radiogroup")?.rawLabel || "").slice(0, 21),
+    "Are you legally autho");
+  check("aria: textbox filled", document.getElementById("gf-name").textContent, "Rishit Goel");
+  check("aria: email filled", document.getElementById("gf-mail").textContent, "rishitgoel259@gmail.com");
+  check("aria: correct radio selected", document.getElementById("gf-yes").getAttribute("aria-checked"), "true");
+  check("aria: other radio untouched", document.getElementById("gf-no").getAttribute("aria-checked"), "false");
+
+  // A control that throws must not take the rest of the form down with it.
+  mount(`<label for="ok1">Full name</label><input id="ok1" name="full_name">
+         <label for="bad">Email</label><input id="bad" name="email" type="email">
+         <label for="ok2">LinkedIn</label><input id="ok2" name="linkedin">`);
+  Object.defineProperty(document.getElementById("bad"), "value", {
+    set() { throw new Error("synthetic widget failure"); }, get() { return ""; }, configurable: true
+  });
+  const resilient = fillAll();
+  check("resilience: a throwing field doesn't abort the run",
+    `${val("#ok1") ? "y" : "n"}${val("#ok2") ? "y" : "n"}`, "yy");
+  check("resilience: run still reports its successes", resilient.filled >= 2, "true");
+
+  // ── Job-description extraction ──
+  // The trap: on an ATS the application form sits in the same container as the
+  // posting, and field labels ("Work authorization", "Years of experience")
+  // read to a model exactly like stated requirements. Left in, the comparison
+  // scores the candidate against the form it is about to fill in.
+  mount(`
+    <main>
+      <div class="job-description">
+        <h2>Senior Backend Engineer</h2>
+        <p>We are looking for someone to own our payments service. You will work
+           across Node.js and PostgreSQL, and lead the migration to Kubernetes.</p>
+        <p>Requirements: five years of backend experience, strong SQL, and
+           production experience with distributed systems.</p>
+      </div>
+      <form id="apply">
+        <label for="jd-wa">Work authorization</label>
+        <input id="jd-wa" name="work_auth">
+        <label for="jd-yoe">Years of experience</label>
+        <select id="jd-yoe"><option>0-2</option><option>3-5</option></select>
+        <button type="submit">Submit Application</button>
+      </form>
+    </main>`);
+
+  const jd = jobDescriptionFromPage(document);
+  check("jd: reads the posting", /own our payments service/.test(jd), "true");
+  check("jd: keeps the stated requirements", /five years of backend experience/.test(jd), "true");
+  check("jd: drops the form's field labels", /Work authorization/.test(jd), "false");
+  check("jd: drops the form's controls", /0-2|3-5/.test(jd), "false");
+  check("jd: drops the submit button", /Submit Application/.test(jd), "false");
+  check("jd: long enough to send", jd.length >= MIN_JD_CHARS, "true");
+
+  // A page with no posting on it must not look like one.
+  mount(`<main><form><label for="x">Name</label><input id="x"></form></main>`);
+  check("jd: an application-only page yields nothing usable",
+    jobDescriptionFromPage(document).length < MIN_JD_CHARS, "true");
+
+  // ── Report ──
+  stage.innerHTML = "";
+  let pass = 0;
+  const rows = results.map(([d, g, w]) => {
+    const ok = g === w; if (ok) pass++;
+    return `<tr><td class="${ok?'ok':'no'}">${ok?'✓':'✗'}</td><td>${d}</td>
+            <td class="${ok?'ok':'no'}">${g}</td><td class="dim">${ok?'':w}</td></tr>`;
+  }).join("");
+  document.getElementById("out").innerHTML =
+    `<h2>Result</h2><div class="${pass===results.length?'ok':'no'}">${pass}/${results.length} passed</div>
+     <h2>Checks</h2><table>${rows}</table>
+     <h2>Step trail</h2><div class="dim">${stepRes.trail.join("<br>")}</div>`;
+  window.__result = { pass, total: results.length,
+    failures: results.filter(([,g,w]) => g !== w).map(([d,g,w]) => `${d} → got "${g}", want "${w}"`),
+    trail: stepRes.trail };
+</script>

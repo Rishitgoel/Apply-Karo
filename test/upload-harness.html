@@ -1,0 +1,169 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ResumeFiler — resume upload harness</title>
+<!--
+  The DOM half of the resume auto-upload, which test/upload.test.mjs cannot
+  reach: on a real application the <input type=file> is hidden behind a styled
+  button or drop zone, so the question is whether the scanner still sees it and
+  whether the injected file actually lands.
+
+  Each case below is the markup one real ATS ships, reduced to the part that
+  matters. Serve the project root and open /test/upload-harness.html.
+-->
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:0;display:grid;grid-template-columns:1fr 1fr;height:100vh}
+  #stage{padding:18px;overflow:auto;border-right:1px solid #ddd}
+  #out{padding:18px;overflow:auto;background:#0f172a;color:#e2e8f0;font:12px/1.6 ui-monospace,monospace}
+  fieldset{margin:0 0 14px;border:1px solid #ccc;border-radius:6px;padding:10px}
+  legend{font-weight:600;font-size:12px}
+  .ok{color:#4ade80}.no{color:#f87171}.dim{color:#64748b}
+  h2{margin:16px 0 6px;font-size:12px;color:#93c5fd;text-transform:uppercase;letter-spacing:.05em}
+  .dropzone{border:2px dashed #bbb;border-radius:6px;padding:14px;text-align:center;color:#666}
+  .attach-btn{padding:6px 10px;border:1px solid #888;border-radius:4px;background:#f4f4f5}
+</style>
+
+<div id="stage">
+  <!-- Greenhouse: real input hidden with display:none, wording on the wrapper. -->
+  <fieldset id="case-greenhouse">
+    <legend>Greenhouse — display:none behind an Attach button</legend>
+    <div id="resume_fieldset">
+      <div>Resume</div>
+      <button class="attach-btn" type="button">Attach</button>
+      <input type="file" id="gh-resume" style="display:none" accept=".pdf,.doc,.docx,.txt,.rtf">
+    </div>
+  </fieldset>
+
+  <!-- Lever: opacity:0 input stretched over a label, no id, no name. -->
+  <fieldset id="case-lever">
+    <legend>Lever — opacity:0 inside a label, unlabelled input</legend>
+    <label class="attach-btn" style="display:block">
+      Attach resume/CV
+      <input type="file" style="opacity:0;position:absolute;width:1px;height:1px">
+    </label>
+  </fieldset>
+
+  <!-- Workday: 1x1 input, wording only in data-automation-id. -->
+  <fieldset id="case-workday">
+    <legend>Workday — 1x1 box, meaning only in data-automation-id</legend>
+    <div data-automation-id="resumeUploadArea">
+      <div class="dropzone">Drop files here</div>
+      <input type="file" id="wd-file" style="width:1px;height:1px;opacity:0">
+    </div>
+  </fieldset>
+
+  <!-- A drop zone whose library listens on the wrapper, not on the input. -->
+  <fieldset id="case-dropzone">
+    <legend>Drop zone — listener on the wrapper, not the input</legend>
+    <div class="dropzone" id="rf-drop">
+      Drag your CV here
+      <input type="file" id="dz-file" style="display:none">
+    </div>
+  </fieldset>
+
+  <!-- Two boxes: one is a photo. The resume must not go into the photo. -->
+  <fieldset id="case-photo">
+    <legend>Photo + document — only the document is ours</legend>
+    <label>Profile photo <input type="file" id="photo-file" accept="image/*" style="display:none"></label>
+    <label>Upload <input type="file" id="other-file" style="display:none"></label>
+  </fieldset>
+
+  <!-- A visible, ordinary input still has to keep working. -->
+  <fieldset id="case-plain">
+    <legend>Plain visible input</legend>
+    <label for="plain-file">Resume</label>
+    <input type="file" id="plain-file">
+  </fieldset>
+</div>
+<div id="out">Running…</div>
+
+<script type="module">
+import { scan } from "../src/engine/scan.js";
+import { pickResumeTargets } from "../src/shared/rules.js";
+import { fillFile } from "../src/engine/fill.js";
+
+const lines = [];
+let pass = 0, fail = 0;
+const check = (desc, got, want) => {
+  const g = JSON.stringify(got), w = JSON.stringify(want);
+  const ok = g === w;
+  ok ? pass++ : fail++;
+  lines.push(`<div class="${ok ? "ok" : "no"}">${ok ? "PASS" : "FAIL"}  ${desc}` +
+    (ok ? "" : `<div class="dim">      expected ${w}, got ${g}</div>`) + `</div>`);
+};
+const h2 = (t) => lines.push(`<h2>${t}</h2>`);
+
+// A one-page PDF, small enough to inline.
+const PDF = "data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMgKzMFIVaAy4jPQtDMxMDCwsuAy5DPUNTBSMFCz0jPRMuQz0jhZBLcy4NTgUAlAcJJgplbmRzdHJlYW0KZW5kb2JqCg==";
+
+const fields = scan();
+const files = fields.filter((f) => f.kind === "file");
+const byId = (id) => files.find((f) => f.el.id === id);
+
+// ─── The scanner must see controls no user can see ───────────────────────────
+h2("Detection — hidden inputs are still fill targets");
+check("display:none input is scanned", !!byId("gh-resume"), true);
+check("opacity:0 input inside a label is scanned",
+  files.some((f) => f.el.closest("#case-lever")), true);
+check("1x1 input is scanned", !!byId("wd-file"), true);
+check("visible input is still scanned", !!byId("plain-file"), true);
+check("all seven uploads are found", files.length, 7);
+
+h2("Context — meaning comes from the wrapper");
+check("Greenhouse wrapper wording reaches the descriptor",
+  /resume/i.test(byId("gh-resume").uploadContext), true);
+check("Lever label wording reaches the descriptor",
+  /resume|cv/i.test(files.find((f) => f.el.closest("#case-lever")).uploadContext), true);
+check("Workday automation id reaches the descriptor",
+  /resume/i.test(byId("wd-file").uploadContext), true);
+check("accept is carried", byId("gh-resume").accept, ".pdf,.doc,.docx,.txt,.rtf");
+
+// ─── Targeting on the real markup ────────────────────────────────────────────
+h2("Targeting");
+const targets = pickResumeTargets(fields, "Rishit_Goel_Resume.pdf");
+const ids = targets.map((t) => t.el.id || t.el.closest("fieldset").id);
+check("the photo box is not a target", ids.includes("photo-file"), false);
+// This page states outright, five times over, where the resume goes. An
+// anonymous "Upload" box alongside that is something else — a portfolio, a
+// reference letter — and inventing a use for it is not ours to do. (The lone
+// unlabelled upload, where the fallback does apply, is covered in
+// test/upload.test.mjs.)
+check("an anonymous upload defers to the explicit resume boxes",
+  ids.includes("other-file"), false);
+check("the five boxes that ask for a resume are targeted",
+  ids.sort(), ["case-lever", "dz-file", "gh-resume", "plain-file", "wd-file"]);
+
+// ─── Injection ───────────────────────────────────────────────────────────────
+h2("Injection");
+let dropSeen = [];
+document.getElementById("rf-drop").addEventListener("dragenter", () => dropSeen.push("dragenter"));
+document.getElementById("rf-drop").addEventListener("dragover", () => dropSeen.push("dragover"));
+document.getElementById("rf-drop").addEventListener("drop", (e) => {
+  dropSeen.push(`drop:${e.dataTransfer.files.length}:${e.dataTransfer.types.join(",")}`);
+});
+
+let changes = 0;
+document.getElementById("gh-resume").addEventListener("change", () => changes++);
+
+const okGh = await fillFile(document.getElementById("gh-resume"), PDF, "Rishit_Goel_Resume.pdf");
+check("file lands in a display:none input", okGh, true);
+check("the input reports the file", document.getElementById("gh-resume").files[0].name, "Rishit_Goel_Resume.pdf");
+check("its type survives", document.getElementById("gh-resume").files[0].type, "application/pdf");
+check("the page's change handler fires once", changes, 1);
+
+await fillFile(document.getElementById("dz-file"), PDF, "Rishit_Goel_Resume.pdf");
+check("the drop zone gets the full drag sequence",
+  dropSeen, ["dragenter", "dragover", "drop:1:Files"]);
+
+// Assignment is not validated against `accept` — Chrome takes the file happily
+// and the site rejects it later. That is precisely why acceptAllows() has to
+// decide before we get here, and this pins the assumption it rests on.
+await fillFile(document.getElementById("photo-file"), PDF, "Rishit_Goel_Resume.pdf");
+check("accept is not enforced by the browser on assignment",
+  document.getElementById("photo-file").files.length, 1);
+check("...so the targeting must exclude that box, and does",
+  ids.includes("photo-file"), false);
+
+document.getElementById("out").innerHTML =
+  `<div style="margin-bottom:10px"><b>${pass}/${pass + fail} passed</b></div>` + lines.join("");
+document.title = fail ? `FAIL (${fail})` : `PASS (${pass})`;
+</script>

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ResumeFiler — Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- The ring gradient has to live in an SVG in the document, not in CSS. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="rf-ring-grad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#6366f1"/>
+        <stop offset="100%" stop-color="#7c3aed"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <header class="header-bar">
+    <div class="row gap-3">
+      <div class="logo-icon" id="logo"></div>
+      <div>
+        <div class="logo-text">ResumeFiler</div>
+        <div class="text-xs faint" id="version-line">Dashboard</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div id="save-status" class="save-indicator"></div>
+      <div class="segmented" id="theme-switch" role="group" aria-label="Theme">
+        <button data-theme-choice="light" title="Light"></button>
+        <button data-theme-choice="system" title="Match the system"></button>
+        <button data-theme-choice="dark" title="Dark"></button>
+      </div>
+      <button id="global-save-btn" class="btn btn-primary">Save changes</button>
+    </div>
+  </header>
+
+  <div class="dashboard-wrapper">
+    <div class="dashboard-container">
+      <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+      <nav class="dashboard-sidebar">
+        <div class="nav-group">
+          <div class="nav-group-title">Profile</div>
+          <div class="menu-item active" data-tab="tab-overview" data-icon="chart" tabindex="0">Overview</div>
+          <div class="menu-item" data-tab="tab-personal" data-icon="user" tabindex="0">Personal info</div>
+          <div class="menu-item" data-tab="tab-education" data-icon="cap" tabindex="0">Education &amp; skills</div>
+          <div class="menu-item" data-tab="tab-experience" data-icon="briefcase" tabindex="0">Work experience</div>
+          <div class="menu-item" data-tab="tab-links" data-icon="link" tabindex="0">Socials &amp; links</div>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-title">Documents</div>
+          <div class="menu-item" data-tab="tab-resume" data-icon="doc" tabindex="0">Resume &amp; AI</div>
+          <div class="menu-item" data-tab="tab-letter" data-icon="pen" tabindex="0">Cover letters</div>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-title">Activity</div>
+          <div class="menu-item" data-tab="tab-applications" data-icon="archive" tabindex="0">
+            Applications <span class="nav-count" id="nav-count-apps">0</span>
+          </div>
+          <div class="menu-item" data-tab="tab-learned" data-icon="brain" tabindex="0">
+            Learned answers <span class="nav-count" id="nav-count-learned">0</span>
+          </div>
+          <div class="menu-item" data-tab="tab-custom-fields" data-icon="list" tabindex="0">
+            Custom fields <span class="nav-count" id="nav-count-custom">0</span>
+          </div>
+        </div>
+
+        <div class="nav-group">
+          <div class="nav-group-title">System</div>
+          <div class="menu-item" data-tab="tab-settings" data-icon="sliders" tabindex="0">Settings</div>
+        </div>
+
+        <div class="sidebar-note">
+          <strong>Everything stays here.</strong>
+          Your profile, resume and answers live in this browser's local storage.
+          Nothing is uploaded except the fields you explicitly send to your own AI provider.
+          <div class="made-by-inline">
+            Made by <strong>Rishit Goel</strong><br>
+            <a class="feedback-link mt-1" id="sidebar-feedback" href="#"
+               title="Email me a bug, an error or an idea">
+              <span data-icon="mail"></span>Found a bug? Email me
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ── Content ─────────────────────────────────────────────────────── -->
+      <main class="dashboard-content">
+
+        <!-- 0. OVERVIEW -->
+        <section id="tab-overview" class="tab-content active">
+          <div class="page-head">
+            <h1 class="page-title" id="greeting">Welcome back</h1>
+            <p class="page-sub">One place to see what ResumeFiler knows about you and what it has been doing.</p>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="row gap-3" style="align-items:flex-start">
+              <div class="ring-wrap">
+                <svg class="ring" width="86" height="86" viewBox="0 0 86 86">
+                  <circle class="track" cx="43" cy="43" r="37" stroke-width="8"/>
+                  <circle class="value" id="ring-value" cx="43" cy="43" r="37" stroke-width="8"
+                          stroke-dasharray="232.5" stroke-dashoffset="232.5"/>
+                </svg>
+                <div class="ring-label" id="ring-label">0%</div>
+              </div>
+              <div class="grow">
+                <div class="section-title">Profile readiness</div>
+                <p class="section-sub mb-3" id="ready-sub">
+                  Fill these in once and most application forms complete in a single press.
+                </p>
+                <div class="checklist" id="checklist"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-pad mb-3" id="nudge-box" hidden></div>
+
+          <div class="grid-4 mb-3" id="overview-stats"></div>
+
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="section-title">Recent activity</div>
+                <div class="section-sub">Every page ResumeFiler filled for you.</div>
+              </div>
+              <button class="btn btn-sm" data-goto="tab-applications">See all</button>
+            </div>
+            <div id="recent-list"></div>
+          </div>
+        </section>
+
+        <!-- 1. PERSONAL -->
+        <section id="tab-personal" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Personal information</h1>
+            <p class="page-sub">The core identity fields. Nearly every form asks for these, so they are worth getting exactly right.</p>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-header"><div class="section-title">Who you are</div>
+              <span class="badge badge-accent">Used on every form</span></div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-firstName">First name</label>
+                <input type="text" id="personal-firstName" class="form-control" placeholder="Alex">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-lastName">Last name</label>
+                <input type="text" id="personal-lastName" class="form-control" placeholder="Morgan">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-middleName">Middle name</label>
+                <input type="text" id="personal-middleName" class="form-control" placeholder="(optional)">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-fullName">Full name</label>
+                <input type="text" id="personal-fullName" class="form-control" placeholder="Alex Morgan">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-email">Email address</label>
+                <input type="email" id="personal-email" class="form-control" placeholder="your.name@email.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-phone">Phone number</label>
+                <input type="tel" id="personal-phone" class="form-control" placeholder="+1 555 010 0199">
+                <div class="form-hint">Keep the country code. When a form has a separate dialling-code box, it is split automatically.</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="personal-location">Location (free text)</label>
+              <input type="text" id="personal-location" class="form-control" placeholder="City, Country">
+            </div>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-header">
+              <div>
+                <div class="section-title">Structured address</div>
+                <div class="section-sub">Workday, iCIMS and Taleo ask for these as separate boxes. Filling them here is what lets those forms complete in one press.</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="personal-address">Street address</label>
+              <input type="text" id="personal-address" class="form-control" placeholder="221B Baker Street">
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-city">City</label>
+                <input type="text" id="personal-city" class="form-control" placeholder="City">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-state">State / province</label>
+                <input type="text" id="personal-state" class="form-control" placeholder="State or province">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-postalCode">Postal / ZIP code</label>
+                <input type="text" id="personal-postalCode" class="form-control" placeholder="Postal code">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-country">Country</label>
+                <input type="text" id="personal-country" class="form-control" placeholder="Country">
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="section-header">
+              <div>
+                <div class="section-title">Work authorisation</div>
+                <div class="section-sub">Answered verbatim on forms, so these are never inferred for you.</div>
+              </div>
+            </div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label class="form-label" for="personal-visaStatus">Visa status</label>
+                <select id="personal-visaStatus" class="form-control">
+                  <option value="Citizen">Citizen / permanent resident</option>
+                  <option value="Authorized to work">Authorised to work (visa / OPT / CPT)</option>
+                  <option value="Requires sponsorship">Requires sponsorship</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-authorizedToWork">Authorised to work in the target country?</label>
+                <select id="personal-authorizedToWork" class="form-control">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-sponsorshipRequired">Need sponsorship now or later?</label>
+                <select id="personal-sponsorshipRequired" class="form-control">
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. EDUCATION -->
+        <section id="tab-education" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Education &amp; skills</h1>
+            <p class="page-sub">Add a card per school. A form asking for three schools reads entry one, two and three in order.</p>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-header">
+              <div class="section-title">Schools</div>
+              <button id="add-education-btn" class="btn btn-primary btn-sm"><span data-icon="plus"></span>Add school</button>
+            </div>
+            <div id="education-list" class="repeater-list"></div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="form-group">
+              <label class="form-label" for="skills-list">Skills</label>
+              <textarea id="skills-list" class="form-control" style="min-height:110px"
+                        placeholder="JavaScript, React, Node.js, Python, AWS, Docker, Git"></textarea>
+              <div class="form-hint">Comma separated. Also used as context when the AI answers open questions.</div>
+            </div>
+            <div id="skill-chips" class="row wrap gap-1 mt-2"></div>
+          </div>
+        </section>
+
+        <!-- 3. EXPERIENCE -->
+        <section id="tab-experience" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Work experience</h1>
+            <p class="page-sub">Newest first. The descriptions are what the AI draws on for "tell us about a project" questions.</p>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-header">
+              <div class="section-title">Roles</div>
+              <button id="add-experience-btn" class="btn btn-primary btn-sm"><span data-icon="plus"></span>Add role</button>
+            </div>
+            <div id="experience-list" class="repeater-list"></div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="form-group">
+              <label class="form-label" for="profile-summary">Professional summary</label>
+              <textarea id="profile-summary" class="form-control" style="min-height:130px"
+                        placeholder="Two or three sentences a recruiter could read in ten seconds."></textarea>
+              <div class="form-hint"><span id="summary-count">0</span> characters. Most "tell us about yourself" boxes cap out around 500.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. LINKS -->
+        <section id="tab-links" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Socials &amp; links</h1>
+            <p class="page-sub">Full URLs including <span class="mono">https://</span> — some forms validate the scheme.</p>
+          </div>
+          <div class="card card-pad">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-linkedin">LinkedIn</label>
+                <input type="url" id="personal-linkedin" class="form-control" placeholder="https://linkedin.com/in/username">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-github">GitHub</label>
+                <input type="url" id="personal-github" class="form-control" placeholder="https://github.com/username">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-website">Personal website</label>
+                <input type="url" id="personal-website" class="form-control" placeholder="https://mywebsite.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-portfolio">Portfolio or blog</label>
+                <input type="url" id="personal-portfolio" class="form-control" placeholder="https://myproject.vercel.app">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. RESUME & AI -->
+        <section id="tab-resume" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Resume &amp; AI</h1>
+            <p class="page-sub">The PDF gets attached to upload fields. Its text is what the model reads when a question has no rule.</p>
+          </div>
+
+          <div class="card mb-3">
+            <div class="card-head">
+              <div>
+                <div class="section-title">Resume file</div>
+                <div class="section-sub">PDF only. Stored on this device and attached to file inputs automatically.</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div id="upload-zone" class="upload-zone">
+                <div class="upload-icon" data-icon="upload"></div>
+                <div>
+                  <p style="font-weight:600;margin-bottom:2px">Drop your resume PDF here</p>
+                  <p class="text-sm muted">or click to browse</p>
+                </div>
+                <input type="file" id="resume-file-input" accept="application/pdf" class="hidden">
+              </div>
+
+              <div id="resume-details" class="card file-card hidden">
+                <div class="file-icon" data-icon="doc"></div>
+                <div class="grow">
+                  <div id="active-filename" style="font-weight:600;font-size:13.5px">resume.pdf</div>
+                  <div id="active-filesize" class="text-xs muted">—</div>
+                </div>
+                <button id="replace-resume-btn" class="btn btn-sm">Replace</button>
+                <button id="delete-resume-btn" class="btn btn-danger btn-sm">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-3">
+            <div class="card-head">
+              <div>
+                <div class="section-title">Model provider</div>
+                <div class="section-sub">Keys and model names are stored separately per provider, so you can switch without re-entering anything.</div>
+              </div>
+              <span id="api-key-status" class="badge badge-danger">No key</span>
+            </div>
+            <div class="card-body">
+              <div class="grid-3">
+                <div class="form-group">
+                  <label class="form-label" for="ai-provider">Provider</label>
+                  <select id="ai-provider" class="form-control">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="groq">Groq</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="ai-api-key">
+                    API key <span id="provider-name-key" class="faint"></span>
+                  </label>
+                  <div class="row gap-1">
+                    <input type="password" id="ai-api-key" class="form-control" placeholder="AIza…" autocomplete="off" spellcheck="false">
+                    <button class="icon-btn" id="key-reveal" title="Show the key" type="button"></button>
+                  </div>
+                  <div class="form-hint">
+                    Get one at <a id="key-link" href="#" target="_blank" rel="noopener">the provider console</a>. Stored on this device only.
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="ai-model">Model <span class="faint">— pick one or type your own</span></label>
+                  <input id="ai-model" class="form-control" list="model-suggestions"
+                         placeholder="gemini-2.0-flash" autocomplete="off" spellcheck="false">
+                  <datalist id="model-suggestions"></datalist>
+                  <div class="form-hint" id="model-hint">Any model id the provider accepts works here.</div>
+                </div>
+              </div>
+
+              <div class="row-between mt-2">
+                <span class="text-xs faint">Testing checks exactly what is on screen, so a wrong id surfaces here rather than mid-application.</span>
+                <button id="test-api-btn" class="btn">Test key &amp; model</button>
+              </div>
+
+              <div class="toggle-row mt-3">
+                <div>
+                  <div class="toggle-label">Use AI for unknown fields</div>
+                  <div class="toggle-desc">
+                    Fields no rule can match are sent to the model, which drafts an answer from your
+                    profile and resume. Runs only when you press Fill, never automatically.
+                    Guesses are outlined in amber for you to check.
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ai-autofill-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="section-title">Resume text</div>
+                <div class="section-sub">Extracted automatically the first time the AI runs. Paste it by hand if your provider cannot read PDFs.</div>
+              </div>
+              <div class="row gap-2">
+                <button id="load-defaults-btn" class="btn btn-sm"
+                        title="Empty every profile field and start over. Learned answers and custom fields are kept.">Clear profile</button>
+                <button id="autofill-profile-btn" class="btn btn-sm btn-success" disabled>Fill profile from resume</button>
+                <button id="parse-resume-btn" class="btn btn-sm btn-primary" disabled>Extract text</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <textarea id="resume-parsed-text" class="form-control mono"
+                        style="min-height:230px;font-size:12px"
+                        placeholder="Upload a PDF and press Extract text, or paste your resume here."></textarea>
+              <div class="form-hint"><span id="resume-text-count">0</span> characters</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. COVER LETTERS -->
+        <section id="tab-letter" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Cover letters</h1>
+            <p class="page-sub">
+              Paste a job description and get a draft built from your real experience. On an application page,
+              the panel's <em>Draft a cover letter</em> button reads the posting for you and types it straight into the form.
+            </p>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="form-group">
+              <label class="form-label" for="jd-input">Job description</label>
+              <textarea id="jd-input" class="form-control" style="min-height:170px"
+                        placeholder="Paste the posting — responsibilities, requirements, the company blurb."></textarea>
+            </div>
+            <div class="row-between wrap gap-2">
+              <div class="row wrap gap-2 grow">
+                <input id="letter-role" class="form-control" style="flex:1 1 170px;min-width:0" placeholder="Role (optional)">
+                <input id="letter-company" class="form-control" style="flex:1 1 170px;min-width:0" placeholder="Company (optional)">
+              </div>
+              <button id="generate-letter-btn" class="btn btn-brand">Write the letter</button>
+            </div>
+          </div>
+
+          <div class="card mb-3" id="letter-output-card" hidden>
+            <div class="card-head">
+              <div class="section-title">Draft</div>
+              <div class="row gap-2">
+                <button id="copy-letter-btn" class="btn btn-sm">Copy</button>
+                <button id="download-letter-btn" class="btn btn-sm">Download</button>
+                <button id="save-letter-btn" class="btn btn-sm btn-primary">Save</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <textarea id="letter-output" class="form-control" style="min-height:320px;line-height:1.7"></textarea>
+              <div class="form-hint">Read it before you send it. It never invents an employer, a date or a degree, but it does make judgement calls.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="section-title">Saved letters</div>
+              <button id="clear-letters-btn" class="btn btn-danger btn-sm">Clear all</button></div>
+            <div id="letters-list"></div>
+          </div>
+        </section>
+
+        <!-- 7. APPLICATIONS -->
+        <section id="tab-applications" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Applications</h1>
+            <p class="page-sub">Every page ResumeFiler filled, logged automatically. Set a status as you hear back.</p>
+          </div>
+
+          <div class="row-between mb-3 wrap gap-2">
+            <div class="row gap-2">
+              <label class="input-affix" style="width:260px">
+                <span data-icon="search"></span>
+                <input id="app-search" class="form-control" placeholder="Search company, role or site">
+              </label>
+              <select id="app-status-filter" class="form-control" style="width:150px">
+                <option value="">All statuses</option>
+              </select>
+            </div>
+            <div class="row gap-2">
+              <button id="export-apps-btn" class="btn btn-sm"><span data-icon="download"></span>Export CSV</button>
+              <button id="clear-apps-btn" class="btn btn-danger btn-sm">Clear</button>
+            </div>
+          </div>
+
+          <div class="grid-4 mb-3" id="app-stats"></div>
+
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Company</th><th>Role</th><th>Site</th>
+                  <th class="shrink">Fit</th>
+                  <th class="shrink">Filled</th><th class="shrink">When</th>
+                  <th class="shrink">Status</th><th class="shrink"></th>
+                </tr>
+              </thead>
+              <tbody id="applications-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 8. LEARNED -->
+        <section id="tab-learned" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Learned answers</h1>
+            <p class="page-sub">
+              When you fill something in by hand, the label and your answer are remembered. The next form that
+              asks the same question gets the same answer, for free, without touching the model.
+            </p>
+          </div>
+
+          <div class="row-between mb-3 gap-2">
+            <label class="input-affix grow" style="max-width:340px">
+              <span data-icon="search"></span>
+              <input id="learned-search" class="form-control" placeholder="Search questions">
+            </label>
+            <div class="row gap-2">
+              <button id="add-learned-btn" class="btn btn-sm btn-primary"><span data-icon="plus"></span>Add</button>
+              <button id="clear-mappings-btn" class="btn btn-danger btn-sm">Clear all</button>
+            </div>
+          </div>
+          <div id="mappings-list" class="kv-list"></div>
+        </section>
+
+        <!-- 9. CUSTOM FIELDS -->
+        <section id="tab-custom-fields" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Custom fields</h1>
+            <p class="page-sub">
+              Extra facts that don't fit the standard profile — gender, salary expectation, notice period,
+              years of experience. These outrank the rule engine, so they are the place to pin down an answer for good.
+            </p>
+          </div>
+
+          <div class="row-between mb-3 gap-2">
+            <label class="input-affix grow" style="max-width:340px">
+              <span data-icon="search"></span>
+              <input id="custom-search" class="form-control" placeholder="Search fields">
+            </label>
+            <button id="add-custom-field-btn" class="btn btn-sm btn-primary"><span data-icon="plus"></span>Add field</button>
+          </div>
+          <div id="custom-fields-list" class="kv-list"></div>
+
+          <div class="card card-pad mt-4">
+            <div class="section-title mb-2">Common ones worth setting</div>
+            <div class="row wrap gap-2" id="suggested-fields"></div>
+          </div>
+        </section>
+
+        <!-- 10. SETTINGS -->
+        <section id="tab-settings" class="tab-content">
+          <div class="page-head">
+            <h1 class="page-title">Settings</h1>
+            <p class="page-sub">Behaviour, appearance and your data.</p>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-title mb-2">Behaviour</div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Fill automatically</div>
+                <div class="toggle-desc">Fill as soon as a page is recognised as an application. Rule matches only — the AI pass never fires without you pressing Fill.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-autofill"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Highlight what was filled</div>
+                <div class="toggle-desc">Green outline for a rule match, amber for a guess worth checking.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-highlight"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Attach my resume</div>
+                <div class="toggle-desc">Uploads the resume from the Resume tab into a form's file box automatically. Boxes asking for a photo, a portfolio or a cover letter are left alone.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-upload"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Skip sensitive questions</div>
+                <div class="toggle-desc">Leaves EEO, gender, race, veteran and disability questions alone on the automatic pass.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-sensitive"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Show the on-page panel</div>
+                <div class="toggle-desc">The small launcher in the corner of application pages. The keyboard shortcut keeps working without it.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-panel"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Track applications</div>
+                <div class="toggle-desc">Log each page you fill so the Applications tab can act as a tracker.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-track"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Count on the toolbar icon</div>
+                <div class="toggle-desc">Shows how many fields were filled on the current tab.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-badge"><span class="toggle-slider"></span></label>
+            </div>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-header">
+              <div>
+                <div class="section-title">Sites switched off</div>
+                <div class="section-sub">ResumeFiler ignores these completely. Subdomains are covered too.</div>
+              </div>
+              <button id="add-site-btn" class="btn btn-sm"><span data-icon="plus"></span>Add site</button>
+            </div>
+            <div id="disabled-sites-list" class="kv-list"></div>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-title mb-2">Backup</div>
+            <p class="text-sm muted mb-3">
+              A JSON file with your profile, learned answers, settings and application log. The resume PDF is
+              not included — it would multiply the file size for something already on your disk.
+            </p>
+            <div class="row wrap gap-2">
+              <button id="export-btn" class="btn"><span data-icon="download"></span>Export backup</button>
+              <button id="export-keys-btn" class="btn btn-sm btn-ghost">Include API keys</button>
+              <button id="import-btn" class="btn"><span data-icon="upload"></span>Import backup</button>
+            </div>
+          </div>
+
+          <div class="card card-pad mb-3">
+            <div class="section-title mb-2">Storage</div>
+            <p class="text-sm muted mb-3" id="storage-line">—</p>
+            <button id="reset-btn" class="btn btn-danger"><span data-icon="trash"></span>Erase everything</button>
+          </div>
+
+          <div class="card card-pad">
+            <div class="section-header">
+              <div>
+                <div class="section-title">Bugs, errors &amp; ideas</div>
+                <div class="section-sub">
+                  A form that filled the wrong box, a site it ignored, a field it invented —
+                  tell me which site it was and I can usually add a rule for it. Suggestions welcome too.
+                </div>
+              </div>
+            </div>
+
+            <div class="row wrap gap-2 mb-3">
+              <a class="btn btn-primary" id="report-bug-btn" href="#"><span data-icon="bug"></span>Report a bug</a>
+              <a class="btn" id="suggest-btn" href="#"><span data-icon="sparkle"></span>Suggest a feature</a>
+            </div>
+
+            <div class="contact-row">
+              <span class="contact-icon" data-icon="mail"></span>
+              <div class="grow">
+                <div class="contact-address" id="contact-address">—</div>
+                <div class="text-xs faint">Opens in your mail app with the version and browser already filled in.</div>
+              </div>
+              <button class="btn btn-sm" id="copy-email-btn"><span data-icon="copy"></span>Copy</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Repeater templates -->
+  <template id="education-template">
+    <div class="repeater-card education-card">
+      <div class="repeater-card-head">
+        <span data-role="title">School</span>
+        <button class="repeater-card-delete" title="Remove" type="button"></button>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">School / institution</label>
+          <input type="text" class="form-control edu-school" placeholder="University name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">GPA</label>
+          <input type="text" class="form-control edu-gpa" placeholder="3.8 / 4.0">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Degree</label>
+          <input type="text" class="form-control edu-degree" placeholder="Bachelor's Degree">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Field of study</label>
+          <input type="text" class="form-control edu-fieldOfStudy" placeholder="Computer Science">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Start date</label>
+          <input type="text" class="form-control edu-startDate" placeholder="Sep 2021">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">End date (or expected)</label>
+          <input type="text" class="form-control edu-endDate" placeholder="Jun 2025">
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="experience-template">
+    <div class="repeater-card experience-card">
+      <div class="repeater-card-head">
+        <span data-role="title">Role</span>
+        <button class="repeater-card-delete" title="Remove" type="button"></button>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Company</label>
+          <input type="text" class="form-control exp-company" placeholder="Company name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input type="text" class="form-control exp-location" placeholder="City, Country">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Job title</label>
+          <input type="text" class="form-control exp-title" placeholder="Software Engineer">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Timeframe</label>
+          <input type="text" class="form-control exp-timeframe" placeholder="Jun 2024 - Aug 2024">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">What you did</label>
+        <textarea class="form-control exp-description" style="min-height:90px"
+                  placeholder="- Built X with Y, cutting Z by 20%"></textarea>
+      </div>
+    </div>
+  </template>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

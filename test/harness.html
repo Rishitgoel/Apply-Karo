@@ -1,0 +1,228 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ResumeFiler scanner harness</title>
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:0;display:grid;grid-template-columns:1fr 1fr;height:100vh}
+  #form{padding:20px;overflow:auto;border-right:1px solid #ddd}
+  #out{padding:20px;overflow:auto;background:#0f172a;color:#e2e8f0;font:12px/1.6 ui-monospace,monospace}
+  fieldset{margin:0 0 18px;border:1px solid #ccc;border-radius:6px;padding:12px}
+  legend{font-weight:600}
+  label{display:block;margin:8px 0 2px;font-size:13px}
+  input,select,textarea{width:100%;padding:6px;box-sizing:border-box}
+  .sr{position:absolute;opacity:0;width:1px;height:1px}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px}
+  table{border-collapse:collapse;width:100%}
+  td,th{padding:3px 8px;text-align:left;border-bottom:1px solid #1e293b;vertical-align:top}
+  th{color:#94a3b8;font-weight:600}
+  .ok{color:#4ade80} .no{color:#f87171} .dim{color:#64748b}
+  h2{margin:18px 0 8px;font-size:13px;color:#93c5fd;text-transform:uppercase;letter-spacing:.05em}
+</style>
+
+<div id="form">
+
+  <!-- Greenhouse: label[for], bracketed names -->
+  <fieldset>
+    <legend>Apply for this Job</legend>
+    <label for="first_name">First Name <span>*</span></label>
+    <input type="text" id="first_name" name="job_application[first_name]">
+
+    <label for="last_name">Last Name *</label>
+    <input type="text" id="last_name" name="job_application[last_name]">
+
+    <label for="email">Email *</label>
+    <input type="email" id="email" name="job_application[email]">
+
+    <label for="phone">Phone</label>
+    <input type="tel" id="phone" name="job_application[phone]">
+
+    <label for="gh_li">LinkedIn Profile</label>
+    <input type="text" id="gh_li" name="job_application[urls][LinkedIn]">
+
+    <label for="gh_resume">Resume/CV</label>
+    <input type="file" id="gh_resume" name="job_application[resume]">
+
+    <!-- honeypot: offscreen, must be ignored -->
+    <input class="hp" name="leave-blank" tabindex="-1" autocomplete="off">
+  </fieldset>
+
+  <!-- Structural label: no for/id, text in a sibling div -->
+  <fieldset>
+    <legend>Contact details</legend>
+    <div><div>Street Address</div><input type="text" name="addr1"></div>
+    <div><div>Town / City</div><input type="text" autocomplete="address-level2"></div>
+    <div><div>Postal Code</div><input type="text" autocomplete="postal-code"></div>
+    <div><div>Country</div><input type="text" autocomplete="country-name"></div>
+  </fieldset>
+
+  <!-- Radio groups: the question lives in the legend, options are sr-only -->
+  <fieldset>
+    <legend>Are you legally authorized to work in the United States?</legend>
+    <label><input type="radio" class="sr" name="work_auth" value="1"> Yes</label>
+    <label><input type="radio" class="sr" name="work_auth" value="0"> No</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Will you now or in the future require sponsorship for employment visa status?</legend>
+    <label><input type="radio" class="sr" name="sponsor" value="yes"> Yes</label>
+    <label><input type="radio" class="sr" name="sponsor" value="no"> No</label>
+  </fieldset>
+
+  <!-- Education section: "School" must resolve via section context -->
+  <fieldset>
+    <legend>Education</legend>
+    <label for="sch">School</label>
+    <input type="text" id="sch" name="school">
+    <label for="deg">Degree</label>
+    <select id="deg" name="degree">
+      <option value="">Select…</option>
+      <option>High School</option>
+      <option>Bachelor's Degree</option>
+      <option>B.Tech</option>
+      <option>Master's Degree</option>
+    </select>
+    <label for="fos">Discipline</label>
+    <input type="text" id="fos" name="discipline">
+  </fieldset>
+
+  <!-- Must NOT be filled -->
+  <fieldset>
+    <legend>Reference</legend>
+    <label for="rn">Name</label>
+    <input type="text" id="rn" name="reference_name">
+    <label for="rp">Phone</label>
+    <input type="tel" id="rp" name="reference_phone">
+  </fieldset>
+
+  <fieldset>
+    <legend>Emergency Contact</legend>
+    <label for="ec">Email</label>
+    <input type="email" id="ec" name="emergency_email">
+  </fieldset>
+
+  <!-- aria-labelledby, and a custom combobox -->
+  <fieldset>
+    <legend>Additional</legend>
+    <span id="lbl-src">How did you hear about us?</span>
+    <input type="text" aria-labelledby="lbl-src" name="source">
+
+    <div id="lbl-country">Location</div>
+    <div role="combobox" aria-controls="cb-list" aria-expanded="false"
+         aria-labelledby="lbl-country" tabindex="0"
+         style="border:1px solid #ccc;padding:6px">Select…</div>
+    <ul id="cb-list" role="listbox" hidden></ul>
+
+    <label for="sal">Desired Salary</label>
+    <input type="text" id="sal" name="salary_expectation">
+
+    <label for="cl">Cover Letter</label>
+    <textarea id="cl" name="cover_letter" rows="3"></textarea>
+  </fieldset>
+
+  <!-- Shadow DOM host -->
+  <div id="shadow-host"></div>
+</div>
+
+<div id="out">Running…</div>
+
+<script>
+  // A web component with its own shadow root, like Salesforce/SAP render.
+  const host = document.getElementById("shadow-host");
+  const sr = host.attachShadow({ mode: "open" });
+  sr.innerHTML = `
+    <fieldset>
+      <legend>Shadow DOM section</legend>
+      <label for="sd-git">GitHub</label>
+      <input type="text" id="sd-git" name="github_url">
+    </fieldset>`;
+</script>
+
+<script type="module">
+  import { scan } from "../src/engine/scan.js";
+  import { assign, RULE_BY_ID } from "../src/shared/rules.js";
+
+  // What each descriptor SHOULD resolve to, keyed by a stable identifier.
+  const EXPECT = {
+    "job_application[first_name]": "firstName",
+    "job_application[last_name]": "lastName",
+    "job_application[email]": "email",
+    "job_application[phone]": "phone",
+    "job_application[urls][LinkedIn]": "linkedin",
+    "job_application[resume]": "__file__",
+    "addr1": "addressLine1",
+    "@address-level2": "city",
+    "@postal-code": "postalCode",
+    "@country-name": "country",
+    "work_auth": "authorizedToWork",
+    "sponsor": "sponsorship",
+    "school": "university",
+    "degree": "degree",
+    "discipline": "fieldOfStudy",
+    "reference_name": null,
+    "reference_phone": null,
+    "emergency_email": null,
+    "source": "referral",
+    "salary_expectation": "salaryExpectation",
+    "cover_letter": null,
+    "github_url": "github",
+    "@combobox": "location"
+  };
+
+  const t0 = performance.now();
+  const fields = scan();
+  const tScan = performance.now() - t0;
+
+  const t1 = performance.now();
+  const assigned = assign(fields, { skipSensitive: true, hasAnswerFor: () => false });
+  const tMatch = performance.now() - t1;
+
+  const keyOf = (f) =>
+    f.name ||
+    (f.autocomplete ? "@" + f.autocomplete : "") ||
+    (f.kind === "combobox" ? "@combobox" : "") ||
+    f.id || "?";
+
+  let pass = 0, checked = 0;
+  const rows = fields.map((f, i) => {
+    const key = keyOf(f);
+    const got = f.kind === "file" ? "__file__" : (assigned.get(i)?.ruleId ?? null);
+    const has = Object.prototype.hasOwnProperty.call(EXPECT, key);
+    const want = has ? EXPECT[key] : undefined;
+    let mark = "·", cls = "dim";
+    if (has) {
+      checked++;
+      const ok = got === want;
+      if (ok) pass++;
+      mark = ok ? "✓" : "✗";
+      cls = ok ? "ok" : "no";
+    }
+    return `<tr>
+      <td class="${cls}">${mark}</td>
+      <td>${key}</td>
+      <td class="dim">${f.kind}</td>
+      <td>${(f.rawLabel || "").slice(0, 42) || "<em class=dim>—</em>"}</td>
+      <td class="${cls}">${got ?? "—"}</td>
+      <td class="dim">${has ? (want ?? "—") : ""}</td>
+      <td class="dim">${f.section || ""}${f.skip ? " skip" : ""}</td>
+    </tr>`;
+  }).join("");
+
+  const honeypotLeaked = fields.some((f) => f.name === "leave-blank");
+
+  document.getElementById("out").innerHTML = `
+    <h2>Result</h2>
+    <div class="${pass === checked && !honeypotLeaked ? "ok" : "no"}">
+      ${pass}/${checked} expectations met &nbsp;·&nbsp;
+      honeypot ${honeypotLeaked ? "LEAKED" : "excluded"}
+    </div>
+    <div class="dim">
+      ${fields.length} descriptors &nbsp;·&nbsp;
+      scan ${tScan.toFixed(2)}ms &nbsp;·&nbsp; match ${tMatch.toFixed(2)}ms
+    </div>
+    <h2>Fields</h2>
+    <table>
+      <tr><th></th><th>key</th><th>kind</th><th>label</th><th>matched</th><th>expected</th><th>ctx</th></tr>
+      ${rows}
+    </table>`;
+
+  window.__result = { pass, checked, count: fields.length, tScan, tMatch, honeypotLeaked };
+</script>

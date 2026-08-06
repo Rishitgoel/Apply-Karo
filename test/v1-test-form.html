@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ResumeFiler - Local Testing Sandbox</title>
+  <style>
+    body {
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      padding: 40px 20px;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+    }
+    .container {
+      max-width: 650px;
+      width: 100%;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 30px;
+    }
+    .job-panel {
+      max-width: 400px;
+      width: 100%;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 30px;
+      align-self: flex-start;
+    }
+    h1 {
+      font-size: 24px;
+      margin-top: 0;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 10px;
+      color: #f0f6fc;
+    }
+    h2 {
+      font-size: 18px;
+      color: #f0f6fc;
+      margin-top: 0;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .input-field {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    .input-field:focus {
+      border-color: #58a6ff;
+      outline: none;
+    }
+    .btn-submit {
+      background: #238636;
+      color: #ffffff;
+      border: 1px solid rgba(240,246,252,0.1);
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-submit:hover {
+      background: #2ea043;
+    }
+    .grid-2 {
+      display: flex;
+      gap: 15px;
+    }
+    .grid-2 .form-group {
+      flex: 1;
+    }
+    .bullet-point {
+      margin-left: 20px;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Mock Job Description Panel -->
+  <div class="job-panel">
+    <h2>Mock Job Posting</h2>
+    <div style="font-size: 18px; font-weight: bold; color: #58a6ff; margin-bottom: 4px;">Staff Software Engineer</div>
+    <div style="font-size: 14px; color: #8b949e; margin-bottom: 15px;">Google DeepMind • Mountain View, CA (Hybrid)</div>
+    
+    <div class="job-description" style="font-size: 13px; line-height: 1.6;">
+      <p><strong>About the Role:</strong></p>
+      <p>We are seeking a Staff Software Engineer to join our Advanced Agentic Coding team. You will lead the design and implementation of next-generation agent systems that assist developers in writing, refactoring, and verifying code. You will collaborate closely with research teams to deploy state-of-the-art AI systems into production development environments.</p>
+      
+      <p><strong>Key Requirements:</strong></p>
+      <div class="bullet-point">• 5+ years of software engineering experience in JavaScript/TypeScript and Python.</div>
+      <div class="bullet-point">• Strong fundamentals in Chrome Extensions, browser scripting, and DOM manipulation APIs.</div>
+      <div class="bullet-point">• Hands-on experience integrating LLMs and generative APIs (such as Gemini) into complex workflows.</div>
+      <div class="bullet-point">• Outstanding system design, communication, and leadership capabilities.</div>
+    </div>
+  </div>
+
+  <!-- Mock Job Application Form -->
+  <div class="container">
+    <h1>Submit Application</h1>
+    <form id="test-form" onsubmit="alert('Form submitted successfully! Check Chrome storage settings to verify learned fields.'); return false;">
+      
+      <h2>Contact Information</h2>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="first-name-input">First Name</label>
+          <input type="text" id="first-name-input" name="first_name" class="input-field" placeholder="First Name">
+        </div>
+        <div class="form-group">
+          <label for="last-name-input">Last Name</label>
+          <input type="text" id="last-name-input" name="last_name" class="input-field" placeholder="Last Name">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="full-name-input">Full Name</label>
+        <input type="text" id="full-name-input" name="fullname" class="input-field" placeholder="Full Name">
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="email-input">Email Address</label>
+          <input type="email" id="email-input" name="email" class="input-field" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="phone-input">Phone Number</label>
+          <input type="tel" id="phone-input" name="phone_number" class="input-field" placeholder="123-456-7890">
+        </div>
+      </div>
+
+      <h2>Work History & Links</h2>
+      <div class="form-group">
+        <label for="linkedin-input">LinkedIn URL</label>
+        <input type="url" id="linkedin-input" name="linkedin_url" class="input-field" placeholder="https://linkedin.com/in/username">
+      </div>
+
+      <div class="form-group">
+        <label for="github-input">GitHub Profile</label>
+        <input type="url" id="github-input" name="github_url" class="input-field" placeholder="https://github.com/username">
+      </div>
+
+      <div class="form-group">
+        <label for="portfolio-input">Portfolio / Website Link</label>
+        <input type="url" id="portfolio-input" name="portfolio_url" class="input-field" placeholder="https://mywebsite.com">
+      </div>
+
+      <h2>Work Authorization</h2>
+      <div class="form-group">
+        <label for="authorized-input">Are you legally authorized to work in the United States?</label>
+        <select id="authorized-input" name="authorized_us" class="input-field">
+          <option value="">-- Please select --</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="sponsorship-input">Will you now or in the future require visa sponsorship?</label>
+        <select id="sponsorship-input" name="sponsor_us" class="input-field">
+          <option value="">-- Please select --</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+
+      <h2>Voluntary Self-Identification (EEO)</h2>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="gender-input">Gender</label>
+          <select id="gender-input" name="gender" class="input-field">
+            <option value="">-- Please select --</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="non-binary">Non-binary</option>
+            <option value="decline">Decline to Self-Identify</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="race-input">Race/Ethnicity</label>
+          <select id="race-input" name="race" class="input-field">
+            <option value="">-- Please select --</option>
+            <option value="hispanic">Hispanic or Latino</option>
+            <option value="white">White (Not Hispanic or Latino)</option>
+            <option value="black">Black or African American (Not Hispanic or Latino)</option>
+            <option value="asian">Asian (Not Hispanic or Latino)</option>
+            <option value="other">Other / Multi-Racial</option>
+            <option value="decline">Decline to Self-Identify</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="veteran-input">Veteran Status</label>
+          <select id="veteran-input" name="veteran" class="input-field">
+            <option value="">-- Please select --</option>
+            <option value="yes">I am a protected veteran</option>
+            <option value="no">I am not a protected veteran</option>
+            <option value="decline">Decline to Self-Identify</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="disability-input">Disability Status</label>
+          <select id="disability-input" name="disability" class="input-field">
+            <option value="">-- Please select --</option>
+            <option value="yes">Yes, I have a disability (or previously had one)</option>
+            <option value="no">No, I do not have a disability</option>
+            <option value="decline">Decline to Self-Identify</option>
+          </select>
+        </div>
+      </div>
+
+      <h2>Additional Details</h2>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="university-input">University / School</label>
+          <input type="text" id="university-input" name="university" class="input-field" placeholder="Type school name..." autocomplete="off">
+          <div id="university-suggestions" style="display:none; background:#0d1117; border:1px solid #30363d; border-radius:6px; max-height:150px; overflow-y:auto; position:absolute; z-index:100; width: 280px;">
+            <div class="suggestion-item" style="padding:8px 12px; cursor:pointer;" onclick="selectUniversity('Delhi Technological University (DTU)')">Delhi Technological University (DTU)</div>
+            <div class="suggestion-item" style="padding:8px 12px; cursor:pointer;" onclick="selectUniversity('Stanford University')">Stanford University</div>
+            <div class="suggestion-item" style="padding:8px 12px; cursor:pointer;" onclick="selectUniversity('Massachusetts Institute of Technology (MIT)')">Massachusetts Institute of Technology (MIT)</div>
+          </div>
+          <script>
+            const uniInput = document.getElementById('university-input');
+            const uniSugg = document.getElementById('university-suggestions');
+            uniInput.addEventListener('focus', () => {
+              uniSugg.style.display = 'block';
+            });
+            uniInput.addEventListener('blur', () => {
+              setTimeout(() => { uniSugg.style.display = 'none'; }, 200);
+            });
+            function selectUniversity(val) {
+              uniInput.value = val;
+              uniInput.dispatchEvent(new Event('input', { bubbles: true }));
+              uniInput.dispatchEvent(new Event('change', { bubbles: true }));
+              uniSugg.style.display = 'none';
+            }
+          </script>
+        </div>
+        <div class="form-group">
+          <label for="salary-input">Expected Annual Salary</label>
+          <input type="text" id="salary-input" name="salary_expectation" class="input-field" placeholder="e.g. $120,000">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="start-date-input">Earliest Start Date / Notice Period</label>
+          <input type="text" id="start-date-input" name="start_date" class="input-field" placeholder="e.g. Immediately, 2 weeks">
+        </div>
+        <div class="form-group">
+          <label for="experience-years-input">Years of Relevant Experience</label>
+          <input type="number" id="experience-years-input" name="years_of_experience" class="input-field" placeholder="e.g. 3">
+        </div>
+      </div>
+
+      <h2>Resume Upload</h2>
+      <div class="form-group">
+        <label for="resume-input">Upload Resume / CV (PDF format)</label>
+        <input type="file" id="resume-input" name="resume" class="input-field" accept=".pdf">
+      </div>
+
+      <h2>Cover Letter</h2>
+      <div class="form-group">
+        <label for="cover-letter-input">Upload or Paste Cover Letter</label>
+        <textarea id="cover-letter-input" name="cover_letter" class="input-field" style="height: 120px;" placeholder="Write or paste cover letter..."></textarea>
+      </div>
+
+      <h2>Additional Questions (AI Assisted)</h2>
+      <div class="form-group">
+        <label for="custom-q1">Why do you want to join Google DeepMind and work on the Advanced Agentic Coding team?</label>
+        <textarea id="custom-q1" name="q_why_join" class="input-field" style="height: 100px;" placeholder="Enter your answer..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="custom-q2">Describe your experience working with Google Gemini or other LLM APIs.</label>
+        <textarea id="custom-q2" name="q_llm_experience" class="input-field" style="height: 100px;" placeholder="Enter your answer..."></textarea>
+      </div>
+
+      <div style="margin-top: 30px;">
+        <button type="submit" class="btn-submit">Submit Mock Application</button>
+      </div>
+
+    </form>
+  </div>
+
+</body>
+</html>
