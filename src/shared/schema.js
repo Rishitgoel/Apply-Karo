@@ -1,4 +1,4 @@
-// ResumeFiler — profile schema + storage access.
+// Apply karo — profile schema + storage access.
 //
 // Storage is deliberately split across keys so that readers only pay for what
 // they need. In v1 everything (including the base64 PDF, ~105 KB) lived under a
@@ -375,7 +375,7 @@ export async function exportAll({ includeKeys = false } = {}) {
     settings.groqApiKey = "";
   }
   return {
-    _format: "resumefiler-backup",
+    _format: "applykaro-backup",
     _version: 2,
     exportedAt: new Date().toISOString(),
     profile: raw.profile || DEFAULT_PROFILE,
@@ -393,8 +393,11 @@ export async function exportAll({ includeKeys = false } = {}) {
  * device that already has a resume does not wipe the resume.
  */
 export async function importAll(data) {
-  if (!data || data._format !== "resumefiler-backup") {
-    throw new Error("That file is not a ResumeFiler backup.");
+  // "resumefiler-backup" is the pre-rename tag; files exported before the app
+  // became Apply karo still carry it and must keep restoring.
+  const known = ["applykaro-backup", "resumefiler-backup"];
+  if (!data || !known.includes(data._format)) {
+    throw new Error("That file is not an Apply karo backup.");
   }
   const current = await area().get(BACKUP_KEYS);
   const patch = {};

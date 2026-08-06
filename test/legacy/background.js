@@ -1,4 +1,4 @@
-// ResumeFiler background service worker.
+// Apply karo background service worker.
 // - Opens the options page on first install.
 // - Proxies all Gemini API calls so the network request + API key stay out of
 //   page/content contexts, and the fetch runs with the extension's host
@@ -56,7 +56,7 @@ async function geminiGenerate(apiKey, model, payload, options) {
           const data = await response.json();
           const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (text) {
-            if (mi > 0) console.warn(`ResumeFiler: '${primary}' unavailable, used fallback model '${targetModel}'.`);
+            if (mi > 0) console.warn(`Apply karo: '${primary}' unavailable, used fallback model '${targetModel}'.`);
             return text;
           }
           // Empty / safety-blocked — not worth retrying the same model.

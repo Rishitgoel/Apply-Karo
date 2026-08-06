@@ -1,4 +1,4 @@
-// ResumeFiler — service worker.
+// Apply karo — service worker.
 //
 // Owns everything that must not live in a page: API keys, network calls, and
 // the storage migration. Content scripts ask for work by message and never see
@@ -45,7 +45,7 @@ async function ensureResumeText(settings) {
       if (text?.trim()) await save({ resumeMeta: { ...resumeMeta, text } });
       return text || "";
     })().catch((err) => {
-      console.warn("ResumeFiler: could not parse the resume —", err.message);
+      console.warn("Apply karo: could not parse the resume —", err.message);
       return "";
     }).finally(() => { resumeTextPromise = null; });
   }

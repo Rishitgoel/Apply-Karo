@@ -1,4 +1,4 @@
-// ResumeFiler — toolbar popup.
+// Apply karo — toolbar popup.
 //
 // Three jobs, in priority order: say what the extension can see on this tab,
 // give you one press that fills it, and surface the two switches you actually
@@ -76,6 +76,7 @@ const SHORTCUT_HINT = "Stored on this device &middot; <kbd>Alt</kbd> <kbd>Shift<
    about a form that filled wrong, so it goes in before you start typing. */
 $("feedback-icon").innerHTML = ICONS.mail;
 $("feedback-link").href = feedbackMailto("bug", host ? { Site: host } : {});
+$("feedback-link").target = "_blank";
 
 // ─── Resume ──────────────────────────────────────────────────────────────────
 //
@@ -191,8 +192,8 @@ if (!host) {
     await saveSettings(ctx.settings);
     notifyPage();
     setFooter(siteToggle.checked
-      ? `Reload the page to switch ResumeFiler back on.`
-      : `ResumeFiler will leave ${host} alone.`);
+      ? `Reload the page to switch Apply karo back on.`
+      : `Apply karo will leave ${host} alone.`);
     paintPageCard(lastStatus);
   });
 }

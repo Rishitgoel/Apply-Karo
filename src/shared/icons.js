@@ -1,4 +1,4 @@
-// ResumeFiler — icon set.
+// Apply karo — icon set.
 //
 // One 16x16 grid, one stroke weight, one set of joins. Defining them once means
 // the popup, the dashboard and the on-page panel cannot drift into three
@@ -9,12 +9,16 @@ const wrap = (body, extra = "") =>
   `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra}>${body}</svg>`;
 
-export const ICONS = {
-  /** The wordmark: a document with a bolt through it. */
-  brand: wrap(`<path d="M9 1.6H4.3a1.3 1.3 0 0 0-1.3 1.3v10.2a1.3 1.3 0 0 0 1.3 1.3h7.4a1.3 1.3 0 0 0 1.3-1.3V5.6Z"/>
-    <path d="M9 1.6v4h4"/><path d="M8.7 7.4 6.2 10.6h2l-.4 2.6 2.6-3.3h-2Z"/>`),
+/* The bolt does double duty: it is the wordmark and it is the generic "fast"
+   icon. One definition rather than two literals, so a tweak to the shape cannot
+   leave the logo and the icon drawing slightly different bolts. */
+const BOLT = `<path d="M8.5 1.5 3 9h4l-.5 5.5L13 7H9l-.5-5.5Z"/>`;
 
-  bolt:      wrap(`<path d="M8.5 1.5 3 9h4l-.5 5.5L13 7H9l-.5-5.5Z"/>`),
+export const ICONS = {
+  /** The wordmark: a bolt, drawn white on the black tile. */
+  brand: wrap(BOLT),
+
+  bolt:      wrap(BOLT),
   steps:     wrap(`<path d="M2 12.5h3v-3h3v-3h3v-3h3"/>`),
   search:    wrap(`<circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 4 4"/>`),
   undo:      wrap(`<path d="M2.5 6.5h7a3.5 3.5 0 0 1 0 7H6"/><path d="m5 3.5-2.5 3 2.5 3"/>`),

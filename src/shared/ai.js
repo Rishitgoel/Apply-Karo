@@ -1,4 +1,4 @@
-// ResumeFiler — model access. Runs in the service worker only, so API keys
+// Apply karo — model access. Runs in the service worker only, so API keys
 // never reach a page context.
 //
 // Two providers are supported. Groq speaks the OpenAI chat-completions shape,
@@ -179,7 +179,7 @@ export async function generate(settings, prompt, opts = {}) {
   const { name, apiKey, model, label } = resolveProvider(settings);
 
   if (!apiKey) {
-    throw new Error(`No ${label} API key set. Add one in the ResumeFiler dashboard.`);
+    throw new Error(`No ${label} API key set. Add one in the Apply karo dashboard.`);
   }
   if (pdf && !PROVIDERS[name].readsPdf) {
     throw new Error(`${label} cannot read PDFs. Paste your resume text in the dashboard, or switch to Gemini for parsing.`);
@@ -278,7 +278,9 @@ async function analyzeChunk(settings, fields, profile, resumeText, offset) {
     let d = `${i + offset}: label="${f.label}"  control=${f.kind || f.type}`;
     if (f.placeholder) d += `  placeholder="${f.placeholder}"`;
     if (f.maxLength) d += `  maxlength=${f.maxLength}`;
-    if (f.options?.length) d += `\n     options: ${f.options.slice(0, 40).map((o) => `"${o}"`).join(", ")}`;
+    if (f.options?.length) {
+      d += `\n     CHOOSE ONE OF THESE, copied exactly: ${f.options.slice(0, 40).map((o) => `"${o}"`).join(", ")}`;
+    }
     return d;
   }).join("\n");
 
@@ -312,8 +314,12 @@ HOW TO ANSWER:
 4. Subjective and open-ended questions ("Why do you want to work here?", "Tell
    us about a challenge") always get a full, confident answer built from the
    candidate's real projects and experience.
-5. When options are listed, the value MUST be one of them, copied character for
-   character. Pick the closest fit rather than returning null.
+5. When a field lists options, it is a dropdown or a set of buttons — it cannot
+   hold words of your own. The value MUST be one of the listed options, copied
+   character for character, including its punctuation and any trailing clause.
+   "Yes" is NOT a valid answer to a field offering "Yes, I am legally
+   authorized" — return that whole string. Pick the closest fit rather than
+   returning null.
 6. confidence is your honest probability (0.0-1.0) that the answer is right.
    Answer the field regardless — confidence below 0.7 highlights it for review
    rather than discarding it, so a low number is not a reason to return null.

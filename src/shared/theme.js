@@ -1,4 +1,4 @@
-// ResumeFiler — theme resolution.
+// Apply karo — theme resolution.
 //
 // The stored preference is one of "system" | "light" | "dark". Everything that
 // paints reads the *resolved* value off `<html data-theme>`, so the CSS only

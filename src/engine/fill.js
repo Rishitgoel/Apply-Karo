@@ -1,4 +1,4 @@
-// ResumeFiler — value injection.
+// Apply karo — value injection.
 //
 // Two things make a fill actually "take" on a modern ATS:
 //
@@ -163,6 +163,17 @@ function bestOption(options, value, minScore = 0.5, ruleId = null) {
   return best;
 }
 
+/**
+ * Which of these options expresses `value`, or null.
+ *
+ * Exported so callers holding a free-text answer — the AI pass especially — can
+ * turn it into a choice before it reaches a control that only accepts choices.
+ */
+export function matchOption(options, value, ruleId = null) {
+  if (!options?.length) return null;
+  return bestOption(options, String(value), 0.5, ruleId);
+}
+
 /** Last-resort catch-alls so a required dropdown is not left empty. */
 function fallbackOption(options) {
   for (const o of options) {
@@ -255,17 +266,70 @@ function fillCheckbox(el, value) {
   return el.checked === want;
 }
 
+/** The options an open menu is currently showing. */
+function visibleOptions(listbox) {
+  const items = Array.from(
+    listbox.querySelectorAll('[role="option"],li,[data-automation-id="promptOption"]')
+  ).filter((n) => n.offsetParent !== null || n.getClientRects().length);
+
+  return items.map((n) => ({
+    el: n,
+    label: (n.textContent || "").trim(),
+    value: n.getAttribute("data-value") || ""
+  })).filter((o) => o.label);
+}
+
+/**
+ * Does this widget accept words of your own, or only ones it offers?
+ *
+ * `aria-autocomplete="list"` — and the absence of the attribute altogether —
+ * both mean the value has to come from the list; only "both"/"inline" complete
+ * text you are free to invent, and `<input list>` is a suggestion box over a
+ * plain text field.
+ */
+function acceptsFreeText(el) {
+  const auto = (el.getAttribute("aria-autocomplete") || "").toLowerCase();
+  if (auto === "both" || auto === "inline") return true;
+  return el.hasAttribute("list");
+}
+
+/** Put a combobox back to the text it held before we typed a filter into it. */
+function untype(el, before) {
+  try {
+    if (el.isContentEditable) el.textContent = before;
+    else if (typeof el.value === "string") setValue(el, before);
+    fireInput(el);
+    fire(el, "change");
+  } catch { /* a widget that resists being reset is not worth aborting for */ }
+}
+
 /**
  * Custom combobox: a text input or button that opens a listbox.
  * Workday, Ashby and most design systems build them this way and they are
  * invisible to a plain `value =` write.
+ *
+ * Typing into one is a way of *filtering* its options, not of answering it. That
+ * distinction is the whole of this function: the text we type is scaffolding,
+ * and if it does not end in one of the widget's own options being selected it
+ * has to come back out. Left in, it reads as a filled field — a Yes/No dropdown
+ * showing the word "Yes" that the site has no selection for and rejects on
+ * submit, which is worse than the blank it replaced.
  */
-async function fillCombobox(el, value, ruleId) {
+async function fillCombobox(field, value, ruleId) {
+  const el = field.el;
+  const typeable = el.tagName === "INPUT" || el.isContentEditable;
+  const before = el.isContentEditable ? (el.textContent || "")
+               : (typeof el.value === "string" ? el.value : "");
+
+  // Options the scanner could already see — a listbox rendered but hidden, an
+  // `aria-owns` list, a <datalist>. When these exist the control is a closed
+  // choice list, whether or not the menu opens for us.
+  const known = field.options?.length ? field.options : null;
+
   realClick(el);
 
   // If it accepts text, type to filter — dramatically improves the hit rate on
   // long lists (countries, universities).
-  const typeable = el.tagName === "INPUT" || el.isContentEditable;
   if (typeable) {
     setValue(el, value);
     fireInput(el);
@@ -273,28 +337,63 @@ async function fillCombobox(el, value, ruleId) {
   }
 
   const listbox = await waitFor(() => findListbox(el), 1500);
-  if (listbox) {
-    const items = Array.from(
-      listbox.querySelectorAll('[role="option"],li,[data-automation-id="promptOption"]')
-    ).filter((n) => n.offsetParent !== null || n.getClientRects().length);
+  const open = listbox ? visibleOptions(listbox) : [];
+  const pool = open.length ? open : (known || []);
 
-    const opts = items.map((n) => ({ el: n, label: (n.textContent || "").trim(), value: n.getAttribute("data-value") || "" }));
-    const pick = bestOption(opts, value, 0.55, ruleId);
-    if (pick) {
+  if (pool.length) {
+    const pick = bestOption(pool, value, 0.55, ruleId);
+    const rendered = pick?.el && (pick.el.offsetParent !== null || pick.el.getClientRects().length);
+
+    if (rendered) {
       pick.el.scrollIntoView({ block: "nearest" });
       realClick(pick.el);
       fire(el, "change");
       return true;
     }
+
+    // The right option exists but is not on screen — a listbox held hidden, a
+    // <datalist>. There is nothing to click, but its wording is what the widget
+    // matches against, so type that instead of ours.
+    if (pick && typeable) {
+      setValue(el, pick.label || pick.value);
+      fireInput(el);
+      key(el, "ArrowDown");
+      key(el, "Enter");
+      fire(el, "change");
+      return true;
+    }
+
+    if (!pick) {
+      // We can see everything this control offers and none of it is the answer.
+      // Leave it as we found it and report the miss, so the panel counts it as
+      // still needing a human rather than claiming it is done.
+      if (typeable) untype(el, before);
+      key(el, "Escape");
+      return false;
+    }
   }
 
-  // Keyboard commit — works for virtualised lists with no clickable node.
+  // Nothing readable — a virtualised or lazily-loaded list with no clickable
+  // node. Commit through the keyboard, which is how those widgets take a choice,
+  // and believe it only if the menu we opened actually closed on a value, or the
+  // widget rewrote our text into its own. Anything else and the "value" here is
+  // just the characters we typed, sitting in a control that never accepted them.
   if (typeable) {
     key(el, "ArrowDown");
     key(el, "Enter");
     fire(el, "change");
-    return !!el.value;
+
+    const now = String(el.value ?? el.textContent ?? "").trim();
+    const closed = listbox && (!listbox.isConnected || !listbox.getClientRects().length);
+    if ((listbox && now && (closed || now !== String(value).trim())) || acceptsFreeText(el)) {
+      return true;
+    }
+
+    untype(el, before);
+    key(el, "Escape");
+    return false;
   }
+
   key(el, "Escape");
   return false;
 }
@@ -416,7 +515,7 @@ export async function fillFile(el, dataUrl, fileName) {
     }
     return true;
   } catch (err) {
-    console.warn("ResumeFiler: file injection failed —", err.message);
+    console.warn("Apply karo: file injection failed —", err.message);
     return false;
   }
 }
@@ -471,16 +570,16 @@ export function fillSync(field, value, ruleId = null) {
   try {
     return dispatchFill(field, String(value), ruleId, isDateRule);
   } catch (err) {
-    console.warn(`ResumeFiler: skipped "${field.rawLabel || field.name || field.kind}" —`, err.message);
+    console.warn(`Apply karo: skipped "${field.rawLabel || field.name || field.kind}" —`, err.message);
     return false;
   }
 }
 
 export async function fillAsync(field, value, ruleId = null) {
   try {
-    if (field.kind === "combobox") return await fillCombobox(field.el, String(value), ruleId);
+    if (field.kind === "combobox") return await fillCombobox(field, String(value), ruleId);
   } catch (err) {
-    console.warn(`ResumeFiler: skipped "${field.rawLabel || field.name}" —`, err.message);
+    console.warn(`Apply karo: skipped "${field.rawLabel || field.name}" —`, err.message);
   }
   return false;
 }

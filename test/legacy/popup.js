@@ -1,4 +1,4 @@
-// ResumeFiler Popup JS Handler
+// Apply karo Popup JS Handler
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Load current storage settings

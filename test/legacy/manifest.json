@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ResumeFiler - Smart Autofill Assistant",
+  "name": "Apply karo - Smart Autofill Assistant",
   "version": "1.0.0",
   "description": "Autofills job applications, uploads resumes, generates cover letters, and learns from manual edits using local storage and Gemini AI.",
   "permissions": [

@@ -1,4 +1,4 @@
-// ResumeFiler — DOM scanner.
+// Apply karo — DOM scanner.
 //
 // Performance notes, since this is where v1 spent nearly all of its time:
 //
@@ -47,7 +47,7 @@ const ARIA_ROLE = {
 const HEADING_SELECTOR = "h1,h2,h3,h4,h5,h6,legend,[role=heading]";
 const HONEYPOT = /honey-?pot|bot-?field|leave-?blank|no-?fill|do-?not-?fill|winnie|comment-?field/i;
 
-const OWN_UI = "#resumefiler-root";
+const OWN_UI = "#applykaro-root";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shadow DOM host cache
@@ -513,6 +513,19 @@ function isHoneypot(el) {
 // Scan
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Is this text input the visible half of a dropdown?
+ *
+ * A <datalist> is deliberately not one: that is a suggestion list over a field
+ * you are free to type anything into, and the text you type is the answer.
+ */
+function isComboInput(el) {
+  const role = (el.getAttribute("role") || "").toLowerCase();
+  if (role === "combobox" || role === "listbox") return true;
+  if (el.hasAttribute("list")) return false;
+  return (el.getAttribute("aria-haspopup") || "").toLowerCase() === "listbox";
+}
+
 function kindOf(el) {
   const tag = el.tagName;
   if (tag === "SELECT") return "select";
@@ -523,6 +536,12 @@ function kindOf(el) {
     if (t === "radio") return "radio";
     if (t === "checkbox") return "checkbox";
     if (t === "date" || t === "month") return "date";
+    // The tag alone does not settle this. Workday, Ashby, Greenhouse and most
+    // design systems build a dropdown as <input role=combobox> over a listbox,
+    // and reading it as an ordinary text box is exactly how an answer gets
+    // typed into it in words instead of chosen from the menu it owns — the box
+    // then shows "Yes" while the site holds no selection at all.
+    if ((t === "text" || t === "search") && isComboInput(el)) return "combobox";
     return "text";
   }
 
@@ -562,6 +581,85 @@ function ariaOptionsFor(container, labelMap) {
     label: normalize(n.getAttribute("aria-label") || n.getAttribute("data-value") || textOf(n, 80)),
     value: n.getAttribute("data-value") || n.getAttribute("value") || ""
   })).filter((o) => o.label);
+}
+
+/**
+ * The choices a combobox offers without being opened.
+ *
+ * Most design-system comboboxes render their menu only on click, and for those
+ * this finds nothing — which is correct; the filler reads them from the open
+ * menu. But plenty put the listbox in the DOM up front (hidden, or referenced by
+ * `aria-owns` from elsewhere on the page) or back a text input with a
+ * <datalist>, and there the choices are knowable now.
+ *
+ * Knowing them is what stops a Yes/No dropdown being answered in words it never
+ * offered: a descriptor with no options is described to the model as a free-text
+ * box, and it answers one the way it answers any other — with a sentence.
+ */
+function comboboxOptions(el) {
+  const root = el.getRootNode?.() || document;
+  const byId = (id) => root.getElementById?.(id) || document.getElementById(id);
+
+  const containers = [];
+  for (const attr of ["aria-controls", "aria-owns"]) {
+    const v = el.getAttribute(attr);
+    if (!v) continue;
+    for (const id of v.split(/\s+/)) {
+      const n = byId(id);
+      if (n) containers.push(n);
+    }
+  }
+  const list = el.tagName === "INPUT" ? el.getAttribute("list") : "";
+  if (list) {
+    const dl = byId(list);
+    if (dl) containers.push(dl);
+  }
+  // A `[role=listbox]` is its own option holder.
+  if (!containers.length && (el.getAttribute("role") || "").toLowerCase() === "listbox") {
+    containers.push(el);
+  }
+
+  const out = [];
+  const seen = new Set();
+  for (const c of containers) {
+    let nodes;
+    try { nodes = c.querySelectorAll('[role="option"],option,li'); } catch { continue; }
+    for (const n of nodes) {
+      if (seen.has(n) || out.length >= 200) continue;
+      seen.add(n);
+      // A <datalist> option carries its words in `value`, not in its text.
+      const label = normalize(
+        n.getAttribute("aria-label") || n.getAttribute("label") ||
+        textOf(n, 80) || n.getAttribute("value") || ""
+      );
+      if (label) {
+        out.push({ el: n, label, value: n.getAttribute("data-value") || n.getAttribute("value") || "" });
+      }
+    }
+  }
+  return out.length ? out : null;
+}
+
+/**
+ * The container a set of ARIA radios belongs to.
+ *
+ * An explicit group wrapper is the answer when there is one. When there is not,
+ * climb until an ancestor holds more than one of them: options wrapped in a div
+ * each would otherwise become a field of their own, and a Yes/No question would
+ * read as two separate questions named "Yes" and "No" — each of which the model
+ * then answers on its own terms.
+ */
+function ariaGroupBox(el, role) {
+  const explicit = el.closest('[role="radiogroup"],[role="group"],fieldset');
+  if (explicit) return explicit;
+
+  let node = el.parentElement;
+  for (let depth = 0; node && depth < 5 && node.tagName !== "BODY"; depth++, node = node.parentElement) {
+    let n = 0;
+    try { n = node.querySelectorAll(`[role="${role}"]`).length; } catch { /* keep climbing */ }
+    if (n > 1) return node;
+  }
+  return el.parentElement;
 }
 
 /** Checked state of an ARIA control, which has no `.checked` property. */
@@ -694,7 +792,7 @@ export function scan() {
     if (groupable) {
       let key;
       if (aria) {
-        const box = el.closest('[role="radiogroup"],[role="group"],fieldset') || el.parentElement;
+        const box = ariaGroupBox(el, kind);
         if (!ariaGroupKeys.has(box)) ariaGroupKeys.set(box, `aria${ariaGroupKeys.size}`);
         key = `${kind}:${ariaGroupKeys.get(box)}`;
       } else {
@@ -787,6 +885,10 @@ export function scan() {
     } else {
       d.filled = !!(el.value && el.value.trim());
     }
+
+    // Left to the end so the `filled` rules above stay exactly as they were —
+    // this only adds what the control offers, when that is readable up front.
+    if (kind === "combobox") d.options = comboboxOptions(el);
 
     fields.push(d);
   }

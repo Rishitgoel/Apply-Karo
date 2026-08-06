@@ -1,4 +1,4 @@
-// ResumeFiler — engine entry point.
+// Apply karo — engine entry point.
 //
 // Loaded lazily by src/detect.js via dynamic import, so none of this code is
 // fetched, parsed or executed on pages that are not job applications.
@@ -13,11 +13,11 @@ import {
 } from "../shared/rules.js";
 import { splitPhone } from "../shared/values.js";
 import { scan, invalidateShadowCache, labelOf } from "./scan.js";
-import { fillSync, fillAsync, fillFile, setValue, fire } from "./fill.js";
+import { fillSync, fillAsync, fillFile, setValue, fire, matchOption } from "./fill.js";
 import { runSteps as stepThrough } from "./steps.js";
 
 const IS_TOP = window === window.top;
-const OWN_UI = "#resumefiler-root";
+const OWN_UI = "#applykaro-root";
 const CONTROL_TAGS = new Set(["INPUT", "SELECT", "TEXTAREA", "FORM", "FIELDSET"]);
 
 let ctx = null;
@@ -40,7 +40,7 @@ function ensureStyles() {
   if (stylesInjected) return;
   stylesInjected = true;
   const s = document.createElement("style");
-  s.id = "resumefiler-styles";
+  s.id = "applykaro-styles";
   s.textContent = `
     .rf-hit{outline:2px solid #22c55e!important;outline-offset:1px!important;
       transition:outline-color .8s ease-out!important}
@@ -119,8 +119,10 @@ export function undoFill() {
   undoStack = [];
   wrote = new WeakMap();
   // The undo emptied the file inputs too, so the next fill must be free to
-  // attach the resume again rather than treating them as already done.
+  // attach the resume again rather than treating them as already done. The
+  // dropdowns it reset are in the same position.
   attached = new WeakSet();
+  widgetTried = new WeakSet();
   setBadge(0);
   return n;
 }
@@ -279,16 +281,19 @@ export async function run(opts = {}) {
     }
 
     // ── Pass 2: widgets that need to open a menu and wait ──
-    // Skipped on the automatic run so page load is never blocked by them.
-    if (opts.manual) {
-      for (const job of asyncQueue) {
-        const ok = await fillAsync(job.field, job.value, job.ruleId);
-        if (ok) {
-          filled++;
-          undoStack.push(job.restore);
-          highlight(job.field.el, job.guess);
-          remember(job.field, job.value, job.ruleId);
-        }
+    const deadline = opts.manual ? Infinity : performance.now() + AUTO_WIDGET_BUDGET_MS;
+    for (const job of widgetTurn(asyncQueue, opts)) {
+      // Out of time for this pass. What is left keeps its place in the queue
+      // for the next one rather than being written off as already tried.
+      if (performance.now() > deadline) break;
+      if (!opts.manual) widgetTried.add(job.field.el);
+
+      const ok = await fillAsync(job.field, job.value, job.ruleId);
+      if (ok) {
+        filled++;
+        undoStack.push(job.restore);
+        highlight(job.field.el, job.guess);
+        remember(job.field, job.value, job.ruleId);
       }
     }
 
@@ -296,7 +301,7 @@ export async function run(opts = {}) {
     filled += await attachFiles(fields);
 
     const ms = Math.round(performance.now() - t0);
-    console.debug(`ResumeFiler: ${filled}/${fields.length} fields in ${ms}ms`);
+    console.debug(`Apply karo: ${filled}/${fields.length} fields in ${ms}ms`);
 
     // ── Pass 4: optional AI for the leftovers ──
     if (opts.useAI && unmatched.length && ctx.settings.aiAutofillEnabled) {
@@ -315,6 +320,80 @@ export async function run(opts = {}) {
   } finally {
     busy = false;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Menu-driven widgets
+//
+// A combobox cannot be filled inside a frame. It has to be clicked open,
+// filtered, and waited on, which is why these are queued out of pass 1 — and
+// why the automatic pass used to drop the queue on the floor, leaving every
+// dropdown on the form blank until you pressed the button yourself.
+//
+// They run automatically now. What makes that bearable is not doing it quietly,
+// it is the two rules below: never under your cursor, and never twice on a
+// control that has already had its turn.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** How long one automatic pass may spend opening menus. */
+const AUTO_WIDGET_BUDGET_MS = 6000;
+
+// Controls the automatic pass has already opened. A dropdown it could not
+// answer would otherwise be reopened on every rescan — and the observer
+// rescans on every React render, which turns one silent failure into a menu
+// that flickers open for the rest of the session.
+let widgetTried = new WeakSet();
+
+/** How long after a keystroke the page still counts as yours. */
+const HUMAN_IDLE_MS = 2500;
+
+let lastHumanEdit = 0;
+
+// Registered as the module loads rather than from boot(), because this is a
+// record of what the user has been doing and it is only useful if it has been
+// running the whole time — a flag that starts recording at the moment we want
+// to read it always says "idle".
+//
+// `isTrusted` is the whole mechanism: it is false on every event we dispatch
+// ourselves and cannot be forged from script, so our own fills can never look
+// like a person typing.
+for (const type of ["keydown", "input", "pointerdown"]) {
+  document.addEventListener(type, (e) => {
+    if (e.isTrusted && !e.target?.closest?.(OWN_UI)) lastHumanEdit = Date.now();
+  }, true);
+}
+
+/** Are you in the middle of filling something in yourself? */
+function userIsBusy() {
+  const el = document.activeElement;
+  if (!el || el === document.body || el.closest?.(OWN_UI)) return false;
+
+  const tag = el.tagName;
+  const inControl = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || !!el.isContentEditable;
+  if (!inControl) return false;
+
+  // Focus on its own does not mean a person is there. Opening a combobox leaves
+  // focus sitting in it, so reading focus alone would let one automatic fill
+  // stand every later one down for the rest of the session.
+  return Date.now() - lastHumanEdit < HUMAN_IDLE_MS;
+}
+
+/**
+ * Which queued widgets this pass gets to fill.
+ *
+ * A manual run takes the lot, retries included: you pressed the button, so the
+ * time is yours to spend and a second press is exactly how you ask for another
+ * attempt at the one that failed.
+ */
+export function widgetTurn(queue, opts) {
+  if (!queue.length) return [];
+  if (opts.manual) return queue;
+
+  // Opening a menu takes focus. Doing that mid-sentence is worse than leaving
+  // the field to the next pass, which is seconds away.
+  if (userIsBusy()) return [];
+
+  return queue.filter((job) => !widgetTried.has(job.field.el));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -362,8 +441,8 @@ function logApplication(filled, total) {
     ts: Date.now(),
     filled,
     total
-  }).catch((err) => console.debug("ResumeFiler: could not log this fill —", err.message));
-  if (first) console.debug("ResumeFiler: logged this page to the application tracker");
+  }).catch((err) => console.debug("Apply karo: could not log this fill —", err.message));
+  if (first) console.debug("Apply karo: logged this page to the application tracker");
 }
 
 function setBadge(count) {
@@ -413,7 +492,7 @@ export function jobDescriptionFromPage(doc = document) {
     const copy = scope.cloneNode(true);
     copy.querySelectorAll(
       "form,input,select,textarea,button,label,fieldset,legend,nav,header,footer,script,style," +
-      '[role="navigation"],[role="banner"],[role="contentinfo"],[id*=resumefiler]'
+      '[role="navigation"],[role="banner"],[role="contentinfo"],[id*=applykaro]'
     ).forEach((n) => n.remove());
     // innerText is unavailable on a detached node, so read textContent and
     // rebuild the paragraph breaks the model needs to see structure.
@@ -473,7 +552,7 @@ export async function matchThisJob(onStage, { force = false } = {}) {
   // apply is worth keeping even if you never fill the form.
   if (IS_TOP && ctx?.settings.trackApplications) {
     recordMatch(location.href.split("#")[0].slice(0, 500), lastMatch, pageIdentity())
-      .catch((err) => console.debug("ResumeFiler: could not save the match —", err.message));
+      .catch((err) => console.debug("Apply karo: could not save the match —", err.message));
   }
   return lastMatch;
 }
@@ -588,7 +667,7 @@ async function attachFiles(fields) {
     // and let the panel's setup list carry the same message where it is visible.
     if (!noResumeWarned) {
       noResumeWarned = true;
-      console.info("ResumeFiler: this form wants a resume, but none is stored — add one in the dashboard.");
+      console.info("Apply karo: this form wants a resume, but none is stored — add one in the dashboard.");
     }
     return 0;
   }
@@ -654,9 +733,21 @@ async function aiPass(unmatched) {
     const i = Number(idxStr);
     const field = candidates[i];
     if (!field || !entry) continue;
-    const value = typeof entry === "object" ? entry.value : entry;
+    let value = typeof entry === "object" ? entry.value : entry;
     const confidence = typeof entry === "object" ? Number(entry.confidence ?? 1) : 1;
     if (value === null || value === undefined || String(value).trim() === "") continue;
+
+    // The model is asked to answer an option field with one of its options, and
+    // usually does. When it does not — a bare "Yes" against "Yes, I am legally
+    // authorized" / "No, I will require sponsorship" — the answer is still
+    // right, but only as a choice. Snap it to the option it means, so the
+    // control receives its own vocabulary rather than the model's.
+    // Single checkboxes are excluded: their one "option" is the box's own
+    // wording, and matching against it would answer a different question.
+    if (field.options?.length && field.kind !== "checkbox") {
+      const pick = matchOption(field.options, value);
+      if (pick) value = pick.label || pick.value;
+    }
 
     const result = fillSync(field, value);
     const ok = result === null ? await fillAsync(field, value) : result;
@@ -734,7 +825,7 @@ function demote(key, ruleId) {
   if (list.includes(ruleId)) return;
   list.push(ruleId);
   correctionsDirty = true;
-  console.debug(`ResumeFiler: demoted "${ruleId}" for "${key}"`);
+  console.debug(`Apply karo: demoted "${ruleId}" for "${key}"`);
 }
 
 /**
@@ -866,7 +957,7 @@ function watchForms() {
 function stopWatching() {
   observer?.disconnect();
   observer = null;
-  console.debug("ResumeFiler: page settled, observer released");
+  console.debug("Apply karo: page settled, observer released");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1010,7 +1101,7 @@ export async function boot() {
   // no observer. An explicit "Fill this page" from the toolbar still works,
   // because that is an unambiguous instruction rather than a standing default.
   if (siteDisabled) {
-    console.debug("ResumeFiler: this site is switched off in settings");
+    console.debug("Apply karo: this site is switched off in settings");
     return;
   }
 
@@ -1032,10 +1123,10 @@ export async function boot() {
 export function highlightEmpty() {
   document.querySelectorAll(".rf-missed").forEach((n) => n.classList.remove("rf-missed"));
 
-  let style = document.getElementById("resumefiler-missed");
+  let style = document.getElementById("applykaro-missed");
   if (!style) {
     style = document.createElement("style");
-    style.id = "resumefiler-missed";
+    style.id = "applykaro-missed";
     style.textContent =
       ".rf-missed{outline:2px dashed #e0483f!important;outline-offset:2px!important;" +
       "border-radius:3px!important;animation:rf-missed-in .25s ease-out}" +

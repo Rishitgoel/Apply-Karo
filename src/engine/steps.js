@@ -1,4 +1,4 @@
-// ResumeFiler — multi-step form navigation.
+// Apply karo — multi-step form navigation.
 //
 // This is the only part of the extension that acts on your behalf beyond typing
 // into boxes, so the guards matter more than the mechanics. Three of them stand
@@ -55,7 +55,7 @@ export function hasStepIndicator(root = document) {
  *   `blocked` means a plausible Next was found but deliberately not clicked, so
  *   the caller can say why rather than reporting a dead end.
  */
-export function findAdvanceButton(root = document, ownUi = "#resumefiler-root") {
+export function findAdvanceButton(root = document, ownUi = "#applykaro-root") {
   const candidates = root.querySelectorAll(
     'button,[role="button"],input[type="submit"],input[type="button"],a[class*="btn"]'
   );
@@ -88,7 +88,7 @@ export function findAdvanceButton(root = document, ownUi = "#resumefiler-root") 
 }
 
 /** Required controls the page still considers empty. */
-export function requiredEmpty(root = document, ownUi = "#resumefiler-root") {
+export function requiredEmpty(root = document, ownUi = "#applykaro-root") {
   const out = [];
   for (const el of root.querySelectorAll('[required],[aria-required="true"]')) {
     const t = (el.type || "").toLowerCase();

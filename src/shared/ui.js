@@ -1,4 +1,4 @@
-// ResumeFiler — toasts and dialogs for the extension's own pages.
+// Apply karo — toasts and dialogs for the extension's own pages.
 //
 // Replaces window.alert / confirm / prompt. Those block the whole renderer, are
 // unstyleable, and in a 344px popup the native prompt is wider than the window

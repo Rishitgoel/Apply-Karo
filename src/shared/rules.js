@@ -1,4 +1,4 @@
-// ResumeFiler — field definitions and the scoring matcher.
+// Apply karo — field definitions and the scoring matcher.
 //
 // v1 matched with `label.includes(keyword)` and took the first rule that hit,
 // locking that rule out for the rest of the form. One bad early guess therefore

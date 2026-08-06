@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ResumeFiler",
+  "name": "Apply karo",
   "version": "2.1.0",
   "description": "One-key autofill for job applications. Detects fields on real ATS forms, tracks what you applied to, and stays out of the way everywhere else.",
   "minimum_chrome_version": "109",
@@ -47,7 +47,7 @@
 
   "action": {
     "default_popup": "popup.html",
-    "default_title": "ResumeFiler",
+    "default_title": "Apply karo",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png",

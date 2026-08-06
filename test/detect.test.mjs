@@ -46,7 +46,7 @@ function runSentinel({ href, controls = [], bodyText = "" }) {
   const win = {
     location: { hostname: url.hostname, pathname: url.pathname, search: url.search, href },
     requestIdleCallback: (fn) => { idleScheduled = fn; },
-    __resumeFilerSeen: undefined
+    __applyKaroSeen: undefined
   };
 
   const chrome = {

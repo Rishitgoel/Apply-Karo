@@ -1,4 +1,4 @@
-// ResumeFiler — detection sentinel.
+// Apply karo — detection sentinel.
 //
 // This is the ONLY script the manifest injects, and it runs in every frame of
 // every page you visit — so it is deliberately dependency-free and does as
@@ -10,8 +10,8 @@
 // was paid continuously while browsing, on pages with no form at all.
 
 (() => {
-  if (window.__resumeFilerSeen) return;
-  window.__resumeFilerSeen = true;
+  if (window.__applyKaroSeen) return;
+  window.__applyKaroSeen = true;
 
   // Hosts where a form is an application by definition.
   const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|myworkdayjobs\.com|myworkdaysite\.com|ashbyhq\.com|workable\.com|smartrecruiters\.com|icims\.com|taleo\.net|jobvite\.com|breezy\.hr|recruitee\.com|bamboohr\.com|teamtailor\.com|personio\.(com|de)|join\.com|pinpointhq\.com|dover\.com|wellfound\.com|jobs\.ashbyhq\.com|applytojob\.com|jazz\.co|hire\.withgoogle\.com|eightfold\.ai|phenompeople\.com|avature\.net|successfactors\.com|oraclecloud\.com)$/i;
@@ -82,7 +82,7 @@
     observer = null;
     import(chrome.runtime.getURL("src/engine/index.js"))
       .then((m) => m.boot())
-      .catch((err) => console.warn("ResumeFiler: engine failed to load —", err));
+      .catch((err) => console.warn("Apply karo: engine failed to load —", err));
   }
 
   function probe() {

@@ -1,4 +1,4 @@
-// ResumeFiler — profile dashboard.
+// Apply karo — profile dashboard.
 
 import {
   loadContext, loadResumeFile, saveResumeFile,
@@ -295,7 +295,7 @@ function renderNudges() {
 
 function renderOverview() {
   const name = state.profile.personal?.firstName || "";
-  $("greeting").textContent = name ? `Hello, ${name}` : "Welcome to ResumeFiler";
+  $("greeting").textContent = name ? `Hello, ${name}` : "Welcome to Apply karo";
 
   const c = completeness(state.profile, state.resumeMeta, state.settings);
   $("ring-label").textContent = `${c.percent}%`;
@@ -1023,7 +1023,7 @@ $("export-apps-btn").addEventListener("click", () => {
       h.company, h.role || h.title, h.host, h.status, h.filled, h.url
     ].map(cell).join(","))
   ].join("\n");
-  downloadBlob(`resumefiler-applications-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv");
+  downloadBlob(`applykaro-applications-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv");
   toast(`Exported ${history.length} rows.`);
 });
 
@@ -1068,7 +1068,7 @@ function renderSettings() {
   const sites = state.settings.disabledSites || [];
   if (!sites.length) {
     list.innerHTML = emptyState("globe", "No sites switched off",
-      "Use the switch in the toolbar popup to silence ResumeFiler on a site you never apply through.");
+      "Use the switch in the toolbar popup to silence Apply karo on a site you never apply through.");
   } else {
     list.innerHTML = sites.map((s) => `
       <div class="custom-field-row">
@@ -1095,7 +1095,7 @@ function renderSettings() {
 
 $("add-site-btn").addEventListener("click", async () => {
   const raw = await promptDialog({
-    title: "Switch ResumeFiler off on a site",
+    title: "Switch Apply karo off on a site",
     body: "Subdomains are covered too, so \"example.com\" also silences \"jobs.example.com\".",
     label: "Hostname", placeholder: "example.com", confirmText: "Add"
   });
@@ -1111,7 +1111,7 @@ $("add-site-btn").addEventListener("click", async () => {
 async function doExport(includeKeys) {
   const data = await exportAll({ includeKeys });
   downloadBlob(
-    `resumefiler-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    `applykaro-backup-${new Date().toISOString().slice(0, 10)}.json`,
     JSON.stringify(data, null, 2)
   );
   toast(includeKeys ? "Backup saved — it contains your API keys, so keep it private." : "Backup saved.");
@@ -1169,8 +1169,11 @@ $("reset-btn").addEventListener("click", async () => {
 
 $("contact-address").textContent = CONTACT_EMAIL;
 $("report-bug-btn").href = feedbackMailto("bug");
+$("report-bug-btn").target = "_blank";
 $("suggest-btn").href = feedbackMailto("idea");
+$("suggest-btn").target = "_blank";
 $("sidebar-feedback").href = feedbackMailto("bug");
+$("sidebar-feedback").target = "_blank";
 
 $("copy-email-btn").addEventListener("click", () => copyText(CONTACT_EMAIL, "Email address copied"));
 

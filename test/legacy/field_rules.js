@@ -1,4 +1,4 @@
-// ResumeFiler Field Rules Engine
+// Apply karo Field Rules Engine
 // Declarative, data-driven field matching — replaces hardcoded if/else regex chains.
 // To add a new field: just add a new rule object to FIELD_RULES.
 

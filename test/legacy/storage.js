@@ -1,4 +1,4 @@
-// ResumeFiler Storage Handler
+// Apply karo Storage Handler
 // Handles saving and loading profiles, resumes, settings, and learned mappings.
 
 const ResumeStorage = {

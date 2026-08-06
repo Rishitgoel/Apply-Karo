@@ -1,4 +1,4 @@
-// ResumeFiler — where feedback goes.
+// Apply karo — where feedback goes.
 //
 // One address, one mailto builder. The popup, the dashboard and the on-page
 // panel all link here, so changing the address is a one-line edit rather than a
@@ -26,7 +26,7 @@ const browserLine = () => {
 
 const TEMPLATES = {
   bug: {
-    subject: "ResumeFiler — bug report",
+    subject: "Apply karo — bug report",
     body: [
       "What went wrong:",
       "",
@@ -40,7 +40,7 @@ const TEMPLATES = {
     ]
   },
   idea: {
-    subject: "ResumeFiler — suggestion",
+    subject: "Apply karo — suggestion",
     body: [
       "What you'd like it to do:",
       "",
@@ -51,19 +51,20 @@ const TEMPLATES = {
     ]
   },
   general: {
-    subject: "ResumeFiler — feedback",
+    subject: "Apply karo — feedback",
     body: ["", ""]
   }
 };
 
 /**
- * Build a mailto: URL for a feedback email.
+ * Build a Gmail web compose URL for a feedback email.
+ * Opens directly in Gmail web in a new browser tab with recipient, subject, and body pre-filled.
  *
  * @param {"bug"|"idea"|"general"} kind      which template to prefill
  * @param {object}  [extra]                  extra diagnostic lines, `label: value`
  * @param {boolean} [extra.includeContext]   append version/browser footer (default true)
  */
-export function feedbackMailto(kind = "general", extra = {}) {
+export function feedbackGmailUrl(kind = "general", extra = {}) {
   const { includeContext = true, ...facts } = extra;
   const t = TEMPLATES[kind] || TEMPLATES.general;
 
@@ -78,7 +79,9 @@ export function feedbackMailto(kind = "general", extra = {}) {
     );
   }
 
-  return `mailto:${CONTACT_EMAIL}`
-    + `?subject=${encodeURIComponent(t.subject)}`
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(CONTACT_EMAIL)}`
+    + `&su=${encodeURIComponent(t.subject)}`
     + `&body=${encodeURIComponent(lines.join("\n"))}`;
 }
+
+export const feedbackMailto = feedbackGmailUrl;

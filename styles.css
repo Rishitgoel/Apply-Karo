@@ -1,4 +1,4 @@
-/* ResumeFiler — design system.
+/* Apply karo — design system.
  *
  * One stylesheet drives the popup and the dashboard. The on-page panel keeps its
  * own copy of the tokens (it lives in a shadow root with `all: initial`, so it
@@ -75,6 +75,8 @@
   --ring:          0 0 0 3px var(--accent-soft);
 
   --brand-grad:    linear-gradient(135deg, #6366f1 0%, #7c3aed 55%, #8b5cf6 100%);
+  --logo-bg:       #000000;
+  --logo-ring:     transparent;   /* black on light: the tile edge is obvious */
 
   --font: InterVariable, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
@@ -121,6 +123,8 @@
   --ring:          0 0 0 3px rgba(139, 157, 255, .22);
 
   --brand-grad:    linear-gradient(135deg, #4f46e5 0%, #6d3fd6 55%, #7c3aed 100%);
+  --logo-bg:       #000000;
+  --logo-ring:     rgba(255, 255, 255, .16);
 }
 
 /* Before theme.js runs there is no data-theme attribute. Match the OS so the
@@ -144,6 +148,7 @@
     --shadow-lg: 0 16px 44px rgba(0,0,0,.6);
     --ring: 0 0 0 3px rgba(139,157,255,.22);
     --brand-grad: linear-gradient(135deg, #4f46e5 0%, #6d3fd6 55%, #7c3aed 100%);
+    --logo-bg: #000000; --logo-ring: rgba(255,255,255,.16);
   }
 }
 
@@ -219,13 +224,16 @@ small { font-size: 12px; }
 
 /* ── Brand mark ──────────────────────────────────────────────────────────── */
 
+/* Black tile, white bolt. On the dark canvas the tile is very nearly the same
+   value as the surface behind it, so a hairline ring keeps it reading as an
+   object rather than as a glyph floating in a hole — see --logo-ring. */
 .logo-icon, .popup-logo {
   display: grid; place-items: center;
   flex: none;
   border-radius: 8px;
-  background: var(--brand-grad);
+  background: var(--logo-bg);
+  box-shadow: inset 0 0 0 1px var(--logo-ring), 0 1px 3px rgba(16, 20, 30, .34);
   color: #fff;
-  box-shadow: 0 1px 3px rgba(79, 70, 229, .4);
 }
 .logo-icon { width: 28px; height: 28px; }
 .popup-logo { width: 26px; height: 26px; border-radius: 7px; }

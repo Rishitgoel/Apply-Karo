@@ -1,4 +1,4 @@
-// ResumeFiler Gemini API Handler
+// Apply karo Gemini API Handler
 // Interfaces with the Google Gemini API to extract resume text, answer questions, and generate cover letters.
 
 const ResumeGemini = {
@@ -224,7 +224,7 @@ No explanations, no markdown formatting, just the raw JSON.`;
     const jsonText = await this.callGemini(apiKey, model, payload);
     const parsed = this.extractJson(jsonText);
     if (!parsed) {
-      console.error("ResumeFiler: Failed to parse AI form analysis response:", jsonText);
+      console.error("Apply karo: Failed to parse AI form analysis response:", jsonText);
       return {};
     }
     return parsed;

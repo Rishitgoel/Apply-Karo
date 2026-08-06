@@ -1,0 +1,234 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Apply karo option-control harness</title>
+<!--
+  Every control here asks a question that has a fixed set of answers. The one
+  thing none of them may end up holding is a word we made up: a dropdown showing
+  the text "Yes" is not answered, it is only decorated, and the site rejects it
+  on submit while the panel counts it as filled.
+
+  So the assertions are in two halves. Did the right option get *selected*, and
+  is there any free text left anywhere it does not belong.
+-->
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:0;display:grid;grid-template-columns:1fr 1fr;height:100vh}
+  #form{padding:20px;overflow:auto;border-right:1px solid #ddd}
+  #out{padding:20px;overflow:auto;background:#0f172a;color:#e2e8f0;font:12px/1.6 ui-monospace,monospace}
+  fieldset{margin:0 0 18px;border:1px solid #ccc;border-radius:6px;padding:12px}
+  legend{font-weight:600}
+  .q{font-size:13px;margin:8px 0 4px}
+  select{width:100%;padding:6px;box-sizing:border-box}
+  .cb{border:1px solid #ccc;padding:6px;border-radius:4px}
+  .menu{border:1px solid #ccc;margin:2px 0 0;padding:0;list-style:none;max-height:120px;overflow:auto}
+  .menu li{padding:4px 8px;cursor:pointer}
+  .menu[hidden]{display:none}
+  .opt{display:inline-block;border:1px solid #bbb;border-radius:4px;padding:3px 10px;margin:2px 4px 2px 0;cursor:pointer}
+  .opt[aria-checked=true]{background:#4f46e5;color:#fff}
+  table{border-collapse:collapse;width:100%}
+  td,th{padding:3px 8px;text-align:left;border-bottom:1px solid #1e293b;vertical-align:top}
+  th{color:#94a3b8;font-weight:600}
+  .ok{color:#4ade80} .no{color:#f87171} .dim{color:#64748b}
+  h2{margin:18px 0 8px;font-size:13px;color:#93c5fd;text-transform:uppercase;letter-spacing:.05em}
+</style>
+
+<div id="form">
+
+  <!-- 1. Native radios, verbose option wording -->
+  <fieldset id="c-radio">
+    <legend>Are you legally authorized to work in the United States?</legend>
+    <label><input type="radio" name="work_auth" value="y"> Yes, I am legally authorized</label>
+    <label><input type="radio" name="work_auth" value="n"> No, I will require sponsorship</label>
+  </fieldset>
+
+  <!-- 2. ARIA radios with no group container, each in its own wrapper -->
+  <fieldset id="c-aria">
+    <legend>Will you now or in the future require visa sponsorship?</legend>
+    <div><div class="opt" role="radio" aria-checked="false" tabindex="0">Yes</div></div>
+    <div><div class="opt" role="radio" aria-checked="false" tabindex="0">No</div></div>
+  </fieldset>
+
+  <!-- 3. Plain select -->
+  <fieldset id="c-select">
+    <legend>Have you previously worked here?</legend>
+    <select id="prev">
+      <option value="">Select…</option>
+      <option value="1">Yes</option>
+      <option value="0">No</option>
+    </select>
+  </fieldset>
+
+  <!-- 4. Combobox whose menu is in the DOM up front, hidden until opened -->
+  <fieldset id="c-open">
+    <legend>Do you have a valid driver's licence?</legend>
+    <input id="cb-open" role="combobox" aria-controls="cb-open-list" aria-expanded="false"
+           aria-autocomplete="list" autocomplete="off" class="cb" placeholder="Select…">
+    <ul id="cb-open-list" class="menu" role="listbox" hidden>
+      <li role="option">Yes, I hold a current licence</li>
+      <li role="option">No, I do not drive</li>
+    </ul>
+  </fieldset>
+
+  <!-- 5. The one that produced the bug report: a combobox whose menu never
+       opens for a synthetic click. Nothing can be chosen, so nothing may be
+       written either. -->
+  <fieldset id="c-stuck">
+    <legend>Do you require any accommodation?</legend>
+    <input id="cb-stuck" role="combobox" aria-expanded="false" aria-autocomplete="list"
+           autocomplete="off" class="cb" placeholder="Select…">
+  </fieldset>
+
+  <!-- 6. A genuine free-text autocomplete. Typed text IS the answer here. -->
+  <fieldset id="c-free">
+    <legend>Which university did you attend?</legend>
+    <input id="cb-free" role="combobox" aria-autocomplete="both" autocomplete="off" class="cb">
+  </fieldset>
+</div>
+
+<div id="out">Running…</div>
+
+<script>
+  // A combobox that opens its own menu on click and filters as you type — the
+  // shape every design system ships, reproduced here so the filler meets a real
+  // one rather than a stub that always cooperates.
+  (function wire() {
+    const input = document.getElementById("cb-open");
+    const list = document.getElementById("cb-open-list");
+    const all = [...list.children].map((li) => li.textContent);
+
+    const render = (filter) => {
+      list.innerHTML = "";
+      for (const text of all) {
+        if (filter && !text.toLowerCase().includes(filter.toLowerCase())) continue;
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.textContent = text;
+        li.addEventListener("mousedown", () => {
+          input.value = text;
+          input.dataset.chosen = text;
+          list.hidden = true;
+          input.setAttribute("aria-expanded", "false");
+        });
+        list.appendChild(li);
+      }
+    };
+
+    const open = () => { list.hidden = false; input.setAttribute("aria-expanded", "true"); render(input.value); };
+    input.addEventListener("mousedown", open);
+    input.addEventListener("focus", open);
+    input.addEventListener("input", () => { list.hidden = false; render(input.value); });
+    render("");
+    list.hidden = true;
+  })();
+
+  document.querySelectorAll('[role="radio"]').forEach((r) => {
+    r.addEventListener("click", () => {
+      const box = r.closest("fieldset");
+      box.querySelectorAll('[role="radio"]').forEach((o) => o.setAttribute("aria-checked", "false"));
+      r.setAttribute("aria-checked", "true");
+    });
+  });
+</script>
+
+<script type="module">
+  import { scan } from "../src/engine/scan.js";
+  import { fillSync, fillAsync } from "../src/engine/fill.js";
+  import { widgetTurn } from "../src/engine/index.js";
+
+  // What we are answering each question with, and what the control must end up
+  // holding. `null` means: this control cannot express that answer, so it must
+  // be left exactly as it was found.
+  const CASES = [
+    { box: "c-radio",  answer: "Yes", want: "Yes, I am legally authorized" },
+    { box: "c-aria",   answer: "No",  want: "No" },
+    { box: "c-select", answer: "Yes", want: "Yes" },
+    { box: "c-open",   answer: "Yes", want: "Yes, I hold a current licence" },
+    { box: "c-stuck",  answer: "Yes", want: null },
+    { box: "c-free",   answer: "Delhi Technological University", want: "Delhi Technological University" }
+  ];
+
+  /** What a human would say this control is currently answering. */
+  function readState(box) {
+    for (const r of box.querySelectorAll("input[type=radio]")) {
+      if (r.checked) return r.closest("label")?.textContent.trim() || r.value;
+    }
+    for (const r of box.querySelectorAll('[role="radio"]')) {
+      if (r.getAttribute("aria-checked") === "true") return r.textContent.trim();
+    }
+    const sel = box.querySelector("select");
+    if (sel) return sel.selectedIndex > 0 ? sel.options[sel.selectedIndex].text : "";
+    const cb = box.querySelector('[role="combobox"]');
+    if (cb) return cb.value.trim();
+    return "";
+  }
+
+  const fields = scan();
+  const rows = [];
+  let pass = 0;
+  let total = CASES.length;
+
+  for (const c of CASES) {
+    const box = document.getElementById(c.box);
+    const field = fields.find((f) => box.contains(f.el));
+
+    let reported = false;
+    if (field) {
+      const sync = fillSync(field, c.answer);
+      reported = sync === null ? await fillAsync(field, c.answer) : sync;
+    }
+
+    const got = readState(box);
+    // A control that could not be answered must be untouched AND must not have
+    // been reported as filled — a false success is the failure being fixed.
+    const ok = c.want === null ? (got === "" && !reported) : (got === c.want && reported);
+    if (ok) pass++;
+
+    rows.push(`<tr>
+      <td class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"}</td>
+      <td>${c.box}</td>
+      <td class="dim">${field ? field.kind : "NOT SCANNED"}</td>
+      <td>${c.answer}</td>
+      <td>${c.want === null ? "&lt;left alone&gt;" : c.want}</td>
+      <td class="${ok ? "dim" : "no"}">${got || "&lt;empty&gt;"}${reported ? "" : " (unfilled)"}</td>
+    </tr>`);
+  }
+
+  // ── The automatic pass is allowed to open these menus, but not at any moment
+  // it likes. These are the guards that make that safe. ──
+  const guards = [];
+  const check = (name, got, want) => {
+    const ok = JSON.stringify(got) === JSON.stringify(want);
+    if (ok) pass++;
+    total++;
+    guards.push(`<tr><td class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"}</td>
+      <td colspan="4">${name}</td><td class="dim">${JSON.stringify(got)}</td></tr>`);
+  };
+
+  const queue = [{ field: { el: document.getElementById("cb-free") } }];
+
+  // The fills above left focus in the control they last wrote to. That is the
+  // state the guard has to read as idle — anything else and one automatic fill
+  // stands every later one down.
+  check("focus left behind by our own fill does not count as typing",
+        widgetTurn(queue, {}).length, 1);
+  check("an empty queue is not work", widgetTurn([], { manual: true }).length, 0);
+
+  // The other half of the guard needs a keystroke the browser marks trusted,
+  // which no synthetic event can be. So it is reported live instead of asserted
+  // here: type into the box below and watch it flip.
+  setInterval(() => {
+    const live = document.getElementById("live");
+    if (live) live.textContent = widgetTurn(queue, {}).length ? "IDLE — auto pass may fill" : "BUSY — auto pass stands down";
+  }, 300);
+
+  document.getElementById("out").innerHTML = `
+    <h2>Option controls — ${pass}/${total} passed</h2>
+    <table>
+      <tr><th></th><th>case</th><th>kind</th><th>answered</th><th>expected</th><th>actual</th></tr>
+      ${rows.join("")}
+      ${guards.join("")}
+    </table>
+    <p class="${pass === total ? "ok" : "no"}">RESULT: ${pass}/${total}</p>
+    <h2>Typing guard (live)</h2>
+    <p id="live" class="dim">…</p>`;
+  document.title = `options ${pass}/${total}`;
+</script>

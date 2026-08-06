@@ -1,4 +1,4 @@
-// ResumeFiler — on-page panel.
+// Apply karo — on-page panel.
 //
 // Imported only in the top frame, only on pages that passed detection. Rendered
 // into a shadow root with `all: initial` so the host page's CSS cannot reach in
@@ -14,7 +14,7 @@ import { ICONS } from "../shared/icons.js";
 import { resolveTheme } from "../shared/theme.js";
 import { feedbackMailto } from "../shared/contact.js";
 
-const HOST_ID = "resumefiler-root";
+const HOST_ID = "applykaro-root";
 
 /* The bundled typeface, matched to the popup and the dashboard.
  *
@@ -23,7 +23,7 @@ const HOST_ID = "resumefiler-root";
  * so it can never collide with — or be picked up by — the page's own styles;
  * only the markup below asks for it. If anything here fails the stack falls back
  * to system type, which is what the panel used before. */
-const FONT_FAMILY = "ResumeFiler Inter";
+const FONT_FAMILY = "Apply karo Inter";
 
 function ensureFont() {
   try {
@@ -56,7 +56,7 @@ const CSS = `
   box-shadow:0 2px 4px rgba(16,20,30,.09),0 10px 24px rgba(16,20,30,.16)}
 .fab:active{transform:translateY(0)}
 .fab .badge{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;
-  background:var(--brand);color:#fff;flex:none}
+  background:var(--logo-bg);box-shadow:inset 0 0 0 1px var(--logo-ring);color:#fff;flex:none}
 .fab .badge svg{width:13px;height:13px}
 .count{min-width:18px;height:18px;padding:0 5px;border-radius:9px;
   background:var(--ok-soft);color:var(--ok);
@@ -78,7 +78,7 @@ const CSS = `
 
 .head{display:flex;align-items:center;gap:8px;padding:11px 12px 10px}
 .head .badge{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
-  background:var(--brand);color:#fff;flex:none}
+  background:var(--logo-bg);box-shadow:inset 0 0 0 1px var(--logo-ring);color:#fff;flex:none}
 .head .badge svg{width:14px;height:14px}
 .name{font-size:12.5px;font-weight:650;letter-spacing:-.02em;color:var(--text);flex:1;line-height:1.2}
 .host{font-size:10px;color:var(--faint);font-weight:400;display:block;margin-top:1px}
@@ -179,6 +179,7 @@ kbd{font:inherit;font-size:9.5px;padding:1px 5px;border-radius:4px;
   --surface:#fff;--bg-inset:#f1f3f7;--border:#e2e5ec;--border-strong:#cbd0da;
   --text:#12151b;--muted:#586070;--faint:#838b99;
   --brand:linear-gradient(135deg,#6366f1,#7c3aed);
+  --logo-bg:#000;--logo-ring:transparent;
   --ok:#0f7b46;--ok-soft:#e6f5ed;
   --warn:#92650a;--warn-soft:#fcf3e2;
   --bad:#c0273a;--bad-soft:#fdecef}
@@ -186,6 +187,7 @@ kbd{font:inherit;font-size:9.5px;padding:1px 5px;border-radius:4px;
   --surface:#16191f;--bg-inset:#232833;--border:#2c323c;--border-strong:#3f4653;
   --text:#e8ebf0;--muted:#99a1b0;--faint:#7c8492;
   --brand:linear-gradient(135deg,#4f46e5,#7c3aed);
+  --logo-bg:#000;--logo-ring:rgba(255,255,255,.16);
   --ok:#48d488;--ok-soft:#10251a;
   --warn:#e0a63f;--warn-soft:#2a2213;
   --bad:#f8737f;--bad-soft:#2c171b}
@@ -215,10 +217,10 @@ export function mount({
   const wrap = document.createElement("div");
   wrap.className = "wrap";
   wrap.innerHTML = `
-    <div class="card" role="dialog" aria-label="ResumeFiler">
+    <div class="card" role="dialog" aria-label="Apply karo">
       <div class="head">
         <span class="badge">${ICONS.brand}</span>
-        <span class="name">ResumeFiler<span class="host" data-host></span></span>
+        <span class="name">Apply karo<span class="host" data-host></span></span>
         <button class="x" data-close aria-label="Close">${ICONS.x}</button>
       </div>
       <div class="body">
@@ -250,10 +252,10 @@ export function mount({
           <button class="linkbtn" data-toggle-more>More</button>
         </div>
         <div class="by">Made by <strong>Rishit Goel</strong><span class="dot">·</span><a
-          data-feedback href="#" title="Email me a bug, an error or an idea">Report a bug</a></div>
+          data-feedback href="#" target="_blank" rel="noopener noreferrer" title="Email me a bug, an error or an idea">Report a bug</a></div>
       </div>
     </div>
-    <button class="fab" data-toggle aria-label="ResumeFiler">
+    <button class="fab" data-toggle aria-label="Apply karo">
       <span class="badge">${ICONS.brand}</span><span>Fill</span>
       <span class="count" data-count></span>
       <span class="grip" data-grip title="Drag to move"></span>
@@ -283,7 +285,10 @@ export function mount({
   /* A bug report from here is worth far more with the page it happened on
      attached — that is the whole reason the link lives in the panel and not
      only in the dashboard. */
-  $("[data-feedback]").href = feedbackMailto("bug", { Site: location.host });
+  const fbLink = $("[data-feedback]");
+  fbLink.href = feedbackMailto("bug", { Site: location.host });
+  fbLink.target = "_blank";
+  fbLink.rel = "noopener noreferrer";
 
   // ── Theme ────────────────────────────────────────────────────────────────
   const paint = () => {

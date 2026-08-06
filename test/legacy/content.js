@@ -1,4 +1,4 @@
-// ResumeFiler Content Script
+// Apply karo Content Script
 // Handles scanning form fields, auto-filling details, auto-uploading resumes,
 // tracking manual adjustments (learning loop), and rendering the interactive floating widget.
 
@@ -32,7 +32,7 @@
   function hasFillableFields() {
     const els = document.querySelectorAll("input, textarea, select");
     for (const el of els) {
-      if (el.closest && el.closest("#resume-filer-widget-root")) continue;
+      if (el.closest && el.closest("#apply-karo-widget-root")) continue;
       if (isFillableField(el)) return true;
     }
     return false;
@@ -112,7 +112,7 @@
             }).catch(err => {
               // Always answer the popup, even if a fill threw, so it doesn't show
               // a misleading "could not trigger" error after partial success.
-              console.warn("ResumeFiler: autofill error:", err && err.message);
+              console.warn("Apply karo: autofill error:", err && err.message);
               sendResponse({ success: false, count: 0, error: err && err.message });
             });
             return true; // keep the channel open for the top frame's response
@@ -130,7 +130,7 @@
       handleFormPresence();
       observeDynamicForms();
     } catch (err) {
-      console.error("ResumeFiler Init Error:", err);
+      console.error("Apply karo Init Error:", err);
     }
   }
 
@@ -159,7 +159,7 @@
       let added = false;
       for (const m of mutations) {
         if (!(m.addedNodes && m.addedNodes.length)) continue;
-        if (m.target && m.target.closest && m.target.closest("#resume-filer-widget-root")) continue;
+        if (m.target && m.target.closest && m.target.closest("#apply-karo-widget-root")) continue;
         added = true;
         break;
       }
@@ -273,7 +273,7 @@
 
     for (const input of inputs) {
       // Skip our own widget elements
-      if (input.closest && input.closest("#resume-filer-widget-root")) continue;
+      if (input.closest && input.closest("#apply-karo-widget-root")) continue;
       // Skip hidden / disabled / zero-size / honeypot fields
       if (!isFillableField(input)) continue;
 
@@ -367,7 +367,7 @@
       );
 
       if (aiCandidates.length > 0) {
-        console.log(`ResumeFiler: Phase 2 — Sending ${aiCandidates.length} unmatched fields to AI...`);
+        console.log(`Apply karo: Phase 2 — Sending ${aiCandidates.length} unmatched fields to AI...`);
         
         try {
           // Serialize field descriptors for the AI prompt
@@ -413,17 +413,17 @@
             }
           }
 
-          console.log(`ResumeFiler: Phase 2 — AI filled additional fields.`);
+          console.log(`Apply karo: Phase 2 — AI filled additional fields.`);
         } catch (err) {
-          console.warn("ResumeFiler: Phase 2 AI analysis failed (non-fatal):", err.message);
+          console.warn("Apply karo: Phase 2 AI analysis failed (non-fatal):", err.message);
         }
       }
     }
 
     if (reviewCount > 0) {
-      console.log(`ResumeFiler: ${reviewCount} field(s) filled with low confidence — highlighted amber for review.`);
+      console.log(`Apply karo: ${reviewCount} field(s) filled with low confidence — highlighted amber for review.`);
     }
-    console.log(`ResumeFiler: Auto-filled ${filledCount} fields total.`);
+    console.log(`Apply karo: Auto-filled ${filledCount} fields total.`);
     return filledCount;
   }
 
@@ -1016,7 +1016,7 @@
         bestMatch.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
         bestMatch.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
         bestMatch.click();
-        console.log("ResumeFiler: Clicked autocomplete suggestion:", bestMatch.innerText?.substring(0, 50));
+        console.log("Apply karo: Clicked autocomplete suggestion:", bestMatch.innerText?.substring(0, 50));
       } else {
         // Keyboard fallback: highlight the first suggestion with ArrowDown, commit with Enter.
         // Helps virtualized / canvas-drawn lists where no clickable node is found.
@@ -1053,9 +1053,9 @@
       fileInput.classList.add("rf-filled");
       
       // Update floating widget label if active
-      console.log(`ResumeFiler: Auto-uploaded resume "${fileName}" successfully!`);
+      console.log(`Apply karo: Auto-uploaded resume "${fileName}" successfully!`);
     } catch (err) {
-      console.error("ResumeFiler: File upload automation failed:", err);
+      console.error("Apply karo: File upload automation failed:", err);
     }
   }
 
@@ -1070,7 +1070,7 @@
       const tag = input.tagName;
       if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") return;
       if (input.type === "hidden" || input.disabled || input.type === "file") return;
-      if (input.closest && input.closest("#resume-filer-widget-root")) return;
+      if (input.closest && input.closest("#apply-karo-widget-root")) return;
 
       const label = getFieldLabel(input);
       if (!label) return;
@@ -1142,7 +1142,7 @@
     // Save profile if standard values updated
     if (updatedProfile) {
       await window.ResumeStorage.saveProfile(state.profile);
-      console.log("ResumeFiler: Saved updated standard profile elements silently.");
+      console.log("Apply karo: Saved updated standard profile elements silently.");
     }
 
     // Auto-save custom mappings silently (Option A behavior)
@@ -1167,7 +1167,7 @@
         await window.ResumeStorage.saveProfile(state.profile);
       }
       await window.ResumeStorage.saveLearnedMappings(state.learnedMappings);
-      console.log(`ResumeFiler: Auto-saved ${customKeys.length} custom field / learned mappings.`);
+      console.log(`Apply karo: Auto-saved ${customKeys.length} custom field / learned mappings.`);
     }
 
     // Clear edits log after saving
@@ -1177,10 +1177,10 @@
   // 5. WIDGET DOM INJECTION (SHADOW DOM ENCAPSULATION)
   function createFloatingWidget(initialFilledCount) {
     if (!IS_TOP_FRAME) return; // widget renders only in the top frame
-    if (document.getElementById("resume-filer-widget-root")) return;
+    if (document.getElementById("apply-karo-widget-root")) return;
 
     const container = document.createElement("div");
-    container.id = "resume-filer-widget-root";
+    container.id = "apply-karo-widget-root";
     container.style.all = "initial"; // Reset page layouts
     document.body.appendChild(container);
 
@@ -1557,7 +1557,7 @@
         <div class="widget-header">
           <div class="header-title">
             <div class="header-logo">R</div>
-            <span>ResumeFiler Assistant</span>
+            <span>Apply karo Assistant</span>
           </div>
           <button id="rf-close-btn" class="close-btn">&times;</button>
         </div>
@@ -1651,7 +1651,7 @@
         <!-- 4. CONFIRMATION OVERLAY FOR LEARNING -->
         <div id="rf-confirm-overlay" class="confirm-overlay">
           <div class="confirm-title">Save Custom Answers?</div>
-          <div class="desc-sm" style="margin-bottom:12px;">ResumeFiler noticed you filled out some custom questions. Would you like to save these mappings to auto-fill them next time?</div>
+          <div class="desc-sm" style="margin-bottom:12px;">Apply karo noticed you filled out some custom questions. Would you like to save these mappings to auto-fill them next time?</div>
           <div id="confirm-items-list" class="confirm-list">
             <!-- Dynamic elements go here -->
           </div>

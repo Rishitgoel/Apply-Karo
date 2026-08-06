@@ -1,4 +1,4 @@
-// ResumeFiler — value vocabulary bridging.
+// Apply karo — value vocabulary bridging.
 //
 // The same question appears as a text box on one site and a dropdown on the
 // next. Adapting the *control* is easy (see fill.js). The harder half is that a
