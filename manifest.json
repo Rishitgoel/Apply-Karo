@@ -45,6 +45,13 @@
     }
   ],
 
+  "commands": {
+    "fill-page": {
+      "suggested_key": { "default": "Alt+Shift+F" },
+      "description": "Fill this page"
+    }
+  },
+
   "action": {
     "default_popup": "popup.html",
     "default_title": "Apply karo",

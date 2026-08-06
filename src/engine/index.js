@@ -994,16 +994,18 @@ async function ensurePanel() {
   return panel;
 }
 
-function watchShortcut() {
-  // Handled in-page rather than through chrome.commands, which would require
-  // broad tab permissions for a message the content script can hear directly.
-  window.addEventListener("keydown", (e) => {
-    if (e.altKey && e.shiftKey && (e.key === "F" || e.key === "f")) {
-      e.preventDefault();
-      run({ manual: true, useAI: true }).then((r) => panel?.setCount(r.filled));
-    }
-  }, true);
-}
+// The Alt+Shift+F shortcut is registered in the manifest under `commands` and
+// dispatched from the service worker, NOT with a keydown listener here.
+//
+// A listener in this file can only fire once the engine has loaded, which means
+// only after detection passed — so on exactly the pages where you would reach
+// for a manual shortcut (a careers page on an unlisted host, a Google Form that
+// missed the text heuristic) the key was dead, while the popup and this file
+// both advertised it as working anywhere.
+//
+// Routing through `chrome.commands` costs no new permission: invoking an
+// extension by its keyboard shortcut is one of the gestures that grants
+// `activeTab`, the same grant a toolbar click gives the popup.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Boot
@@ -1095,7 +1097,6 @@ export async function boot() {
   });
 
   watchEdits();
-  watchShortcut();
 
   // A site the user has switched off gets nothing: no panel, no automatic fill,
   // no observer. An explicit "Fill this page" from the toolbar still works,

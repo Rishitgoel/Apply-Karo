@@ -1,0 +1,19 @@
+# Build output
+dist/
+
+# Never commit a real resume. The extension stores yours in chrome.storage on
+# your own machine; a copy in the repo ships to every user who unpacks the zip
+# and lives in the git history forever.
+*.pdf
+!test/**/*.pdf
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Local tooling
+.claude/
+node_modules/

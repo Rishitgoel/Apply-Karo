@@ -16,7 +16,10 @@ automatically on first run — nothing to re-enter.
 ## Use it
 
 - Pages are filled automatically once detected as an application.
-- **Alt + Shift + F** fills on demand, anywhere.
+- **Alt + Shift + F** fills on demand, on any page — including one detection
+  skipped. It is a real browser shortcut, declared in the manifest and
+  dispatched from the service worker, so it works before the engine has loaded.
+  Rebind or clear it at `chrome://extensions/shortcuts`.
 - The corner button opens a panel: *Fill this page*, *Steps*, *Undo*,
   *Highlight what's still empty*, *Draft a cover letter*, *Edit profile*,
   *Turn off on this site*. Drag its handle if a site puts its own chat bubble
@@ -215,7 +218,30 @@ node test/compare-v1.mjs
 ```
 
 Runs the same cases through the v1 engine in `test/legacy/` for comparison.
-Nothing under `test/` ships — exclude the whole directory when you package.
+
+## Packaging
+
+```bash
+node build.mjs
+```
+
+Writes `dist/apply-karo-<version>.zip`, ready to upload. No dependencies — the
+zip is written with `zlib`, so packaging never needs an install step.
+
+The file list in `build.mjs` is an **allowlist**, which is the entire point of
+having a script rather than zipping the folder. A denylist is one forgotten
+entry away from shipping something private, and it fails silently: the upload
+succeeds and you find out later. So adding a source file to the extension means
+adding it to `SHIP_FILES` or `SHIP_DIRS` too, and the build refuses to run if
+the manifest names a file that is not in the zip.
+
+Nothing under `test/`, no `.pdf`, and no `.claude/` can reach the package —
+those are rejected by a second check even if an allowlisted directory somehow
+contains them.
+
+**Never commit a real resume to this repo.** `.gitignore` excludes `*.pdf` for
+that reason: a copy in the repo ships to everyone who unpacks the zip and stays
+in the git history permanently.
 
 ## AI (optional, off by default)
 
@@ -255,6 +281,25 @@ output: varied sentence length, concrete specifics over adjectives, no
 *Moreover / Furthermore*, no em dashes, and no tidy summarising last line.
 Short factual answers ("Yes", "30 days") are remembered for next time; prose
 never is, so the same essay is not replayed across applications.
+
+## Privacy
+
+Your data stays on your machine. There is no server, no account and no
+analytics, and the extension makes no network request at all unless you have
+turned on an AI feature and pressed a button that uses one — at which point the
+request goes from your browser straight to Google or Groq on your own API key,
+and never through anything of mine.
+
+The full policy is [PRIVACY.md](PRIVACY.md), and ships as `privacy.html` so it
+is readable offline from Dashboard → Settings → Privacy. **The two are separate
+copies — update both.** The markdown is the one to host for the Chrome Web Store
+listing's privacy policy URL, which is a required field for an extension that
+handles personal data.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). The bundled Inter typeface is under the SIL Open
+Font License; see `fonts/LICENSE.txt`.
 
 ## Found a bug?
 

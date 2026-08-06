@@ -157,3 +157,56 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status === "loading") chrome.action.setBadgeText({ tabId, text: "" }).catch(() => {});
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Keyboard shortcut
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Alt+Shift+F, declared in the manifest under `commands`.
+ *
+ * This lives here rather than as a keydown listener in the engine because the
+ * engine only exists on pages detection accepted — which left the shortcut dead
+ * on the pages most likely to need it. Pressing an extension's shortcut grants
+ * `activeTab` for the current tab, the same way clicking the toolbar icon does,
+ * so this needs no permission the popup did not already rely on.
+ *
+ * The user can rebind or clear it at chrome://extensions/shortcuts; Chrome
+ * silently drops a suggested key another extension already claimed, in which
+ * case nothing here fires and the popup button remains the way in.
+ */
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command !== "fill-page") return;
+
+  const target = tab?.id !== undefined
+    ? tab
+    : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+  if (!target?.id) return;
+
+  // A rejection means nothing is listening in that tab at all — a chrome://
+  // page, the Web Store, the PDF viewer. That is a different failure from the
+  // engine being absent but detect.js being present, and only the first is
+  // hopeless, so they are kept apart. `rf_force_load` never sends a response,
+  // so a resolved `undefined` says the sentinel heard us and must not be read
+  // as silence.
+  let reachable = true;
+  const send = (message) => chrome.tabs.sendMessage(target.id, message).catch(() => {
+    reachable = false;
+    return null;
+  });
+
+  // Same shape as the popup's retry: detection is conservative, so ask first,
+  // and only force the engine in when nothing answered. The engine arrives by
+  // dynamic import, so give it a few beats to land rather than calling it dead
+  // on one miss.
+  if (await send({ type: "rf_fill" })) return;
+
+  reachable = true;
+  await send({ type: "rf_force_load" });
+  if (!reachable) return;
+
+  for (let i = 0; i < 6; i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    if (await send({ type: "rf_fill" })) return;
+  }
+});

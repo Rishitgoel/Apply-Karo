@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Apply karo — Privacy</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* A reading page, not a dashboard: one column, measured for prose. */
+    .prose-wrap { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+    .prose h2 { font-size: 1.05rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+    .prose h2:first-child { margin-top: 0; }
+    .prose p, .prose li { line-height: 1.65; margin-bottom: .8rem; }
+    .prose ul { padding-left: 1.15rem; }
+    .prose table { width: 100%; border-collapse: collapse; margin: .5rem 0 1.25rem; }
+    .prose th, .prose td { text-align: left; padding: .5rem .6rem; vertical-align: top; font-size: .875rem; }
+    .prose thead th { border-bottom: 1px solid var(--border); font-weight: 600; }
+    .prose tbody tr + tr td { border-top: 1px solid var(--border); }
+    .lede { font-size: 1.02rem; }
+  </style>
+</head>
+<body>
+  <header class="header-bar">
+    <div class="row gap-3">
+      <div class="logo-icon" id="logo"></div>
+      <div>
+        <div class="logo-text">Apply karo</div>
+        <div class="text-xs faint">Privacy policy</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="back-btn" class="btn">Back to the dashboard</button>
+    </div>
+  </header>
+
+  <div class="prose-wrap prose">
+    <p class="text-xs faint">Last updated 6 August 2026 · applies to version <span id="version">—</span></p>
+
+    <p class="lede">
+      Your data stays on your computer. There is no Apply karo server, no account, and no
+      analytics. The only time anything leaves your machine is when you have turned on the
+      optional AI features and pressed a button that uses one — and then it goes to the AI
+      provider you chose, using your own API key, not to me.
+    </p>
+
+    <h2>What is stored</h2>
+    <p>
+      All of it lives in <code>chrome.storage.local</code> on this device. It is not synced to
+      your Google account and it is not uploaded anywhere.
+    </p>
+    <table>
+      <thead><tr><th>What</th><th>Why it exists</th></tr></thead>
+      <tbody>
+        <tr><td>Your profile — name, email, phone, address, work history, education, skills, links, work authorization, custom answers</td><td>These are the values written into application forms</td></tr>
+        <tr><td>Your resume PDF, and the text extracted from it</td><td>Attached to forms that ask for a file; the text is what the AI features read</td></tr>
+        <tr><td>Learned answers and corrections</td><td>So a question you answered or corrected once is answered the same way next time</td></tr>
+        <tr><td>Your application log — company, role, site, URL, title, fields filled, when, the status you set, the match score if you ran one</td><td>The tracker and the follow-up reminders</td></tr>
+        <tr><td>Cover letters you generate</td><td>So you can reread and reuse them</td></tr>
+        <tr><td>Settings, including your API keys and the sites you switched the extension off on</td><td>To work the way you configured it</td></tr>
+      </tbody>
+    </table>
+    <p class="text-sm muted">
+      Nothing is stored about pages you merely visit. A page reaches the application log only
+      when a fill actually runs on it.
+    </p>
+
+    <h2>What leaves this device, and when</h2>
+    <p>
+      Nothing is transmitted unless you have added an API key and enabled an AI feature. Those
+      features are off by default and none of them run automatically — each one needs you to
+      press a button.
+    </p>
+    <p>When you do, your browser sends a request directly to the provider you selected:</p>
+    <table>
+      <thead><tr><th>Provider</th><th>Endpoint</th><th>Their policy</th></tr></thead>
+      <tbody>
+        <tr><td>Google Gemini</td><td><code>generativelanguage.googleapis.com</code></td><td><a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer">terms</a></td></tr>
+        <tr><td>Groq</td><td><code>api.groq.com</code></td><td><a href="https://groq.com/privacy-policy" target="_blank" rel="noopener noreferrer">policy</a></td></tr>
+      </tbody>
+    </table>
+    <p>
+      Depending on which feature you pressed, that request contains some combination of: the
+      labels and surrounding text of the form fields on the page, your profile values, your
+      resume text or the resume PDF itself, and the job description from the page you are on.
+      Your API key travels in the request header to authenticate you.
+    </p>
+    <p>
+      <strong>These requests go straight from your browser to the provider.</strong> They do not
+      pass through any server of mine — I have none, and I never see the contents. Once your data
+      reaches Google or Groq it is governed by their policies, linked above, not by this one. If
+      you would rather nothing left your machine at all, leave the AI features off; rule-based
+      filling, the tracker and the rest of the dashboard work entirely offline.
+    </p>
+    <p>
+      The extension makes no other network requests. No analytics, no telemetry, no crash
+      reporting, no update pings, no advertising or tracking of any kind, and no remotely hosted
+      code — everything that runs is in the package you installed.
+    </p>
+
+    <h2>Why the permissions</h2>
+    <ul>
+      <li><strong>Access to the websites you visit.</strong> A small detection script works out
+        whether a page is a job application. On a page that is not one it does a single check and
+        stops, and the rest of the extension is never loaded. It reads page content only to find
+        and fill form fields, and sends that content nowhere except in the AI cases above.</li>
+      <li><strong>Storage, and unlimited storage.</strong> To keep your profile and settings. The
+        unlimited variant is needed because your resume PDF is held in that storage and would
+        otherwise hit Chrome's default quota.</li>
+      <li><strong>Active tab.</strong> So the toolbar button and the keyboard shortcut can act on
+        the page you are looking at when you press them.</li>
+    </ul>
+
+    <h2>What is never done</h2>
+    <p>
+      The extension never submits an application. No code in it clicks a Submit, Apply or Finish
+      button in any mode — you review the form and send it yourself.
+    </p>
+    <p>
+      Your data is never sold, rented, shared or transferred to anyone. It is not used to build a
+      profile of you, and not used for advertising or for training anyone's model beyond whatever
+      the provider you chose does under their own policy.
+    </p>
+
+    <h2>Your control over it</h2>
+    <ul>
+      <li><strong>See it.</strong> Everything is visible and editable in the dashboard.</li>
+      <li><strong>Export it.</strong> Settings → Export backup writes a JSON file. API keys are
+        excluded unless you explicitly ask for them.</li>
+      <li><strong>Delete part of it.</strong> The dashboard has individual controls to remove your
+        resume, clear saved cover letters, clear the application log and clear learned mappings.</li>
+      <li><strong>Delete all of it.</strong> Settings → Erase everything. Uninstalling the
+        extension also removes everything Chrome held for it.</li>
+    </ul>
+    <p>
+      Because there is no server, there is nothing for me to delete on your behalf and no request
+      you need to send to make deletion happen.
+    </p>
+
+    <h2>Children</h2>
+    <p>
+      Apply karo is meant for people old enough to be applying for jobs. It is not directed at
+      children under 13 and knowingly collects nothing from them.
+    </p>
+
+    <h2>Changes</h2>
+    <p>
+      If this policy changes in a way that affects what is collected or where it goes, the date
+      above changes and a release note says what changed.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about any of this, or anything else:
+      <a id="contact-link" href="#">rishitgoel259@gmail.com</a>. Built and maintained by
+      Rishit Goel.
+    </p>
+  </div>
+
+  <script type="module" src="privacy.js"></script>
+</body>
+</html>
