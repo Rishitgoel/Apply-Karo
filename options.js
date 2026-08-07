@@ -5,13 +5,14 @@ import {
   saveProfile, saveSettings, saveLearned, save, DEFAULT_PROFILE,
   loadHistory, saveHistory, loadLetters, saveLetters,
   APPLICATION_STATUS, completeness, normalizeHost, setSiteDisabled,
-  exportAll, importAll, resetAll, storageUsage, overlayFilled, staleApplications
+  exportAll, importAll, resetAll, storageUsage, overlayFilled, staleApplications,
+  resumeTextIsCurrent, safeHttpUrl
 } from "./src/shared/schema.js";
 import { PROVIDERS, resolveProvider, canReadPdf } from "./src/shared/ai.js";
 import { ICONS } from "./src/shared/icons.js";
 import { applyTheme, watchTheme, THEMES } from "./src/shared/theme.js";
 import {
-  toast, toastError, dialog, confirmDialog, promptDialog,
+  toast, toastError, dialog, confirmDialog, promptDialog, alertDialog,
   copyText, downloadBlob, pickFile, relativeTime
 } from "./src/shared/ui.js";
 import { CONTACT_EMAIL, feedbackMailto } from "./src/shared/contact.js";
@@ -286,7 +287,7 @@ function renderNudges() {
             ${h.role ? ` — ${esc(h.role)}` : ""}
             · ${h.daysSince} days with no update
           </span>
-          <a class="icon-btn" href="${esc(h.url)}" target="_blank" rel="noopener"
+          <a class="icon-btn" href="${esc(safeHttpUrl(h.url))}" target="_blank" rel="noopener"
              title="Open the posting">${ICONS.external}</a>
         </div>`).join("")}
     </div>
@@ -347,6 +348,47 @@ function renderOverview() {
 }
 
 // ─── Resume ──────────────────────────────────────────────────────────────────
+/**
+ * Say whether the stored resume has actually been read, and from what.
+ *
+ * The upload card used to stop at "here is your file", which is the half of the
+ * setup that does nothing on its own — the PDF gets attached to upload boxes,
+ * but every AI answer, cover letter and job match comes from the text. A card
+ * reporting success while the useful half had not happened is the reason people
+ * concluded the AI "doesn't work".
+ *
+ * The interesting state is the third one: text that exists but describes a
+ * resume you have since replaced.
+ */
+function renderResumeReadState() {
+  const el = $("resume-read-state");
+  const meta = state.resumeMeta;
+  const source = $("resume-text-source");
+  // The same number the counter under the textarea shows. Trimming here made the
+  // two disagree by the trailing newline, and two character counts a few pixels
+  // apart that differ by one read as a bug in whichever you trust less.
+  const chars = String(meta.text || "").length;
+  const empty = !String(meta.text || "").trim();
+
+  if (empty) {
+    el.textContent = "Not read yet — the AI has nothing to answer from";
+    el.className = "text-xs text-warning";
+    source.textContent = "";
+  } else if (!meta.textFileName) {
+    el.textContent = `Text entered by hand · ${chars.toLocaleString()} characters`;
+    el.className = "text-xs muted";
+    source.textContent = " · entered by hand";
+  } else if (resumeTextIsCurrent(meta)) {
+    el.textContent = `Read · ${chars.toLocaleString()} characters`;
+    el.className = "text-xs text-success";
+    source.textContent = ` · read from ${meta.textFileName}`;
+  } else {
+    el.textContent = `Text is from ${meta.textFileName}, not this file — press Extract text`;
+    el.className = "text-xs text-danger";
+    source.textContent = ` · from ${meta.textFileName}, which is no longer the stored resume`;
+  }
+}
+
 function renderResume() {
   const has = !!resumeBase64;
   uploadZone.classList.toggle("hidden", has);
@@ -360,6 +402,8 @@ function renderResume() {
     resumeParsedText.value = state.resumeMeta.text || "";
   }
 
+  renderResumeReadState();
+
   const keyed = !!apiKeyInput.value.trim();
   // Only a multimodal provider can read the PDF itself. On Groq the button is
   // disabled and says why, rather than failing after you press it.
@@ -371,10 +415,23 @@ function renderResume() {
     : pdfCapable ? "Extract the resume text so the AI can use it"
     : `${PROVIDERS[providerSelect.value].label} cannot read PDFs — paste the text below instead.`;
 
-  autofillProfileBtn.disabled = !(keyed && state.resumeMeta.text);
-  autofillProfileBtn.title = autofillProfileBtn.disabled
-    ? "Needs an API key and some resume text"
-    : "Read the resume text and fill in the profile fields";
+  // Deliberately NOT disabled merely because the resume has not been read yet.
+  //
+  // It used to be, and the click handler's "Extract the resume text first"
+  // message therefore could not fire: the button greyed itself out and the only
+  // explanation was a title attribute you had to hover to find. Upload a resume,
+  // press the obvious next button, nothing happens — which reads as broken
+  // rather than as a missing step.
+  //
+  // It stays enabled whenever there is something to work from, and the handler
+  // offers to do the extraction itself. Two buttons in a fixed order is a
+  // sequence the user should not have to know about.
+  const canExtract = has && pdfCapable;
+  autofillProfileBtn.disabled = !(keyed && (state.resumeMeta.text || canExtract));
+  autofillProfileBtn.title = !keyed ? "Add an API key first"
+    : state.resumeMeta.text ? "Read the resume text and fill in the profile fields"
+    : canExtract ? "Reads your resume first, then fills in the profile fields"
+    : "Paste your resume text below first";
 }
 
 function setApiBadge(tone, text) {
@@ -504,7 +561,14 @@ window.addEventListener("beforeunload", () => {
 
 $("skills-list").addEventListener("input", renderSkillChips);
 $("profile-summary").addEventListener("input", renderCounts);
-resumeParsedText.addEventListener("input", renderCounts);
+// Typing or pasting in here makes the text yours, not the PDF's. Recording that
+// stops it being reported as "read from resume.pdf" when it no longer is, and
+// stops the AI path deciding to re-read the PDF over the top of what you wrote.
+resumeParsedText.addEventListener("input", () => {
+  state.resumeMeta.textFileName = "";
+  renderCounts();
+  renderResumeReadState();
+});
 
 // ─── Resume upload ───────────────────────────────────────────────────────────
 uploadZone.addEventListener("click", () => fileInput.click());
@@ -526,18 +590,68 @@ function processFile(file) {
   reader.onload = async (e) => {
     resumeBase64 = e.target.result;
     const kb = Math.round(file.size / 1024);
+    // The previous resume's text is kept rather than blanked — on a provider
+    // that cannot read PDFs it is the only copy there is, and it may have been
+    // typed by hand. `textFileName` is what stops it being mistaken for a
+    // description of the file that just replaced it: the card below now says so
+    // outright, and the AI path re-reads rather than answering from it.
     state.resumeMeta = {
+      ...state.resumeMeta,
       fileName: file.name,
-      fileSize: kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`,
-      text: state.resumeMeta.text || ""
+      fileSize: kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`
     };
     await Promise.all([saveResumeFile(resumeBase64), save({ resumeMeta: state.resumeMeta })]);
     renderResume();
     renderOverview();
     toast(`${file.name} is ready to be attached.`);
+    await autoExtract();
   };
   reader.onerror = () => toast("Couldn't read that file.", "error");
   reader.readAsDataURL(file);
+}
+
+/**
+ * Read the newly uploaded PDF straight away, when we can.
+ *
+ * Uploading and then pressing Extract text is a two-step sequence with nothing
+ * on screen to say the second step exists, and the service worker already does
+ * exactly this by itself on the AI path — so the dashboard was the only place
+ * still asking to be told. It stays silent when it cannot help: no key, or a
+ * provider that cannot read a PDF, in which case the status line says so.
+ */
+async function autoExtract() {
+  if (resumeTextIsCurrent(state.resumeMeta)) return;
+  if (!apiKeyInput.value.trim()) return;
+  if (!canReadPdf({ provider: providerSelect.value })) return;
+
+  await withButton(parseResumeBtn, "Extracting…", async () => {
+    try {
+      const { text } = await ask("parse_resume", { dataUrl: resumeBase64 });
+      if (!text?.trim()) return;
+      setResumeText(text, state.resumeMeta.fileName);
+      await save({ resumeMeta: state.resumeMeta });
+      renderResume();
+      renderCounts();
+      renderOverview();
+      toast(`Read ${text.length.toLocaleString()} characters from ${state.resumeMeta.fileName}.`);
+    } catch (err) {
+      // Not fatal: the upload itself succeeded, and Extract text is still there.
+      toast(`Uploaded, but couldn't read it: ${err.message}`, "warning");
+    }
+  });
+}
+
+/**
+ * Record resume text and what it came from.
+ *
+ * One writer, so `text` and `textFileName` cannot drift — a stamp that lies
+ * about its source is worse than no stamp, because everything downstream now
+ * trusts it. Pass "" for `fromFile` when the text was typed or pasted.
+ */
+function setResumeText(text, fromFile) {
+  state.resumeMeta.text = text;
+  state.resumeMeta.textFileName = fromFile || "";
+  if (resumeParsedText.value !== text) resumeParsedText.value = text;
 }
 
 deleteResumeBtn.addEventListener("click", async () => {
@@ -621,8 +735,7 @@ parseResumeBtn.addEventListener("click", async () => {
   await withButton(parseResumeBtn, "Extracting…", async () => {
     try {
       const { text } = await ask("parse_resume", { dataUrl: resumeBase64 });
-      resumeParsedText.value = text;
-      state.resumeMeta.text = text;
+      setResumeText(text, state.resumeMeta.fileName);
       await save({ resumeMeta: state.resumeMeta });
       renderResume();
       renderCounts();
@@ -634,10 +747,71 @@ parseResumeBtn.addEventListener("click", async () => {
   });
 });
 
+/**
+ * Decide whether "Fill profile from resume" can go ahead, and say so if not.
+ *
+ * The profile is extracted from the resume *text*, not from the PDF — so with no
+ * text this button has nothing to read. It used to handle that by disabling
+ * itself, which meant the explanation lived in a title attribute you had to
+ * hover to find, and the handler's own error message was unreachable code.
+ *
+ * @returns {Promise<"go"|"parse-first"|"stop">}
+ */
+async function profileFillPlan() {
+  if (state.resumeMeta.text?.trim()) return "go";
+
+  if (!resumeBase64) {
+    await alertDialog({
+      title: "No resume to read yet",
+      body: "Upload your resume PDF at the top of this tab, or paste its text into the Resume text box below. " +
+            "The profile is built from that text."
+    });
+    return "stop";
+  }
+
+  if (!canReadPdf({ provider: providerSelect.value })) {
+    await alertDialog({
+      title: `${PROVIDERS[providerSelect.value].label} cannot read PDFs`,
+      body: "It only accepts text. Paste your resume into the Resume text box below, or switch the provider " +
+            "to Google Gemini, press Parse resume text, and then try this again."
+    });
+    return "stop";
+  }
+
+  // There is a PDF and a provider that can read it, so the missing step is one
+  // this button can simply take. It still asks, because it spends an API call
+  // and can take half a minute on a long resume.
+  return await confirmDialog({
+    title: "Read your resume first?",
+    body: "Your resume has not been converted to text yet, and the profile is built from that text. " +
+          "This reads the PDF once with your API key and keeps the result, so it only has to happen now.",
+    confirmText: "Read it, then fill the profile"
+  }) ? "parse-first" : "stop";
+}
+
 autofillProfileBtn.addEventListener("click", async () => {
-  if (!state.resumeMeta.text) { toast("Extract the resume text first.", "error"); return; }
+  // Asked before the button starts spinning: a button reading "Reading…" behind
+  // a modal asking whether to read is its own small lie.
+  const plan = await profileFillPlan();
+  if (plan === "stop") return;
+
   await withButton(autofillProfileBtn, "Reading…", async () => {
     try {
+      if (plan === "parse-first") {
+        const { text } = await ask("parse_resume", { dataUrl: resumeBase64 });
+        if (!text?.trim()) {
+          await alertDialog({
+            title: "Nothing came back from that PDF",
+            body: "The model returned no text. If your resume is a scan or an image, paste the text in by hand."
+          });
+          return;
+        }
+        setResumeText(text, state.resumeMeta.fileName);
+        await save({ resumeMeta: state.resumeMeta });
+        renderResume();
+        renderCounts();
+      }
+
       const { profile } = await ask("extract_profile", { resumeText: state.resumeMeta.text });
       // Overlay, never overwrite with nothing. The extraction prompt asks for ""
       // when a fact is absent, and a resume states neither a street address nor
@@ -984,7 +1158,7 @@ function renderApplications() {
       </td>
       <td class="shrink">
         <div class="row gap-1">
-          <a class="icon-btn" href="${esc(h.url)}" target="_blank" rel="noopener" title="Open the posting">${ICONS.external}</a>
+          <a class="icon-btn" href="${esc(safeHttpUrl(h.url))}" target="_blank" rel="noopener" title="Open the posting">${ICONS.external}</a>
           <button class="icon-btn" data-del-app title="Remove from the list">${ICONS.trash}</button>
         </div>
       </td>

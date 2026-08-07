@@ -35,8 +35,7 @@
   "web_accessible_resources": [
     {
       "resources": ["src/engine/*.js", "src/shared/*.js"],
-      "matches": ["http://*/*", "https://*/*"],
-      "use_dynamic_url": true
+      "matches": ["http://*/*", "https://*/*"]
     },
     {
       "resources": ["fonts/InterVariable.woff2"],

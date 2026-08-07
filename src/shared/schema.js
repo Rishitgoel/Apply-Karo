@@ -78,7 +78,12 @@ export const DEFAULT_SETTINGS = {
   // provider, so switching back and forth does not lose either.
   provider: "gemini",
   geminiApiKey: "",
-  geminiModel: "gemini-2.0-flash",
+  // Must stay equal to PROVIDERS.gemini.models[0] in shared/ai.js, which is what
+  // resolveProvider falls back to when nothing is stored. Flash-Lite is the
+  // right default for this extension specifically: the two things it asks a
+  // model to do most are reading a resume PDF and answering short form fields,
+  // which is exactly the high-throughput document work this tier is built for.
+  geminiModel: "gemini-3.5-flash-lite",
   groqApiKey: "",
   groqModel: "llama-3.3-70b-versatile",
 
@@ -98,7 +103,28 @@ export const DEFAULT_SETTINGS = {
   disabledSites: []
 };
 
-export const DEFAULT_RESUME_META = { fileName: "", fileSize: "", text: "" };
+// `textFileName` is the PDF the text was read from, or "" when it was typed or
+// pasted by hand.
+//
+// Without it there is no way to tell resume text that describes the current file
+// from text left over by the one it replaced — and "any text will do" is what let
+// a swapped resume keep being answered from the old one. It also gives the
+// dashboard something true to say about whether the setup is actually working,
+// which a character count on its own cannot.
+export const DEFAULT_RESUME_META = { fileName: "", fileSize: "", text: "", textFileName: "" };
+
+/**
+ * Is the stored resume text about the resume that is stored now?
+ *
+ * Hand-pasted text ("" — no file claimed) is always current: the user typed it
+ * for whatever is in the slot, and silently discarding it to re-read a PDF would
+ * throw away the only copy on a provider that cannot read PDFs at all.
+ */
+export function resumeTextIsCurrent(meta = {}) {
+  if (!String(meta.text || "").trim()) return false;
+  if (!meta.textFileName) return true;
+  return meta.textFileName === meta.fileName;
+}
 
 const KEYS = ["profile", "learned", "settings", "resumeMeta", "corrections"];
 
@@ -299,6 +325,31 @@ export async function saveLetters(letters) {
 // Per-site rules
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * A URL that is safe to put in an href, or "".
+ *
+ * Escaping the string stops it breaking out of the attribute; it does nothing
+ * about the *scheme*, and `javascript:alert(1)` needs no quotes or angle
+ * brackets to survive it. An anchor carrying that in the dashboard runs script
+ * in the extension's own origin, with access to everything in
+ * `chrome.storage.local` — the profile, the resume, the API keys.
+ *
+ * The tracker's URLs come from pages a content script ran on, which are always
+ * http(s), so this is not reachable from ordinary use. It is reachable through
+ * Settings → Import: a backup file is plain JSON from wherever the user got it,
+ * and nothing about receiving one implies it was written by this extension.
+ */
+export function safeHttpUrl(url) {
+  const s = String(url || "").trim();
+  if (!s) return "";
+  try {
+    const u = new URL(s);
+    return (u.protocol === "http:" || u.protocol === "https:") ? s : "";
+  } catch {
+    return "";                       // not a URL at all
+  }
+}
+
 /** Normalise a hostname so "www.x.com" and "X.com" cannot both be stored. */
 export function normalizeHost(host) {
   return String(host || "").trim().toLowerCase().replace(/^www\./, "");
@@ -422,7 +473,14 @@ export async function importAll(data) {
   }
   if (Array.isArray(data.history)) {
     const seen = new Set((current.history || []).map((h) => h.url));
-    patch.history = [...(current.history || []), ...data.history.filter((h) => !seen.has(h.url))]
+    // Rewrite every incoming URL through the scheme check rather than only
+    // escaping it at render time. A backup is plain JSON from wherever the user
+    // got it, and this is the boundary where it stops being someone else's data
+    // — sanitising here means a row cannot sit in storage waiting for the one
+    // place that forgot to sanitise on the way out.
+    patch.history = [...(current.history || []),
+                     ...data.history.filter((h) => h && !seen.has(h.url))
+                                    .map((h) => ({ ...h, url: safeHttpUrl(h.url) }))]
       .sort((a, b) => (b.ts || 0) - (a.ts || 0))
       .slice(0, MAX_HISTORY);
   }
@@ -473,8 +531,12 @@ export async function migrateFromV1() {
     patch.learned = raw.learnedMappings;
   }
 
-  // v1 defaulted to a model id that was never generally available; if the user
-  // never changed it, move them onto something real.
+  // v1 defaulted to a model id that did not exist when v1 shipped, so a fresh
+  // v1 install failed every AI call until the user changed it by hand. Google
+  // has since released a model under that name, which makes this rewrite
+  // unnecessary rather than wrong — it only ever fires on an unmigrated v1
+  // install, and it moves them from one working model to another. Left in place
+  // because removing it would leave the genuinely-stranded installs stranded.
   if (raw.settings && raw.settings.geminiModel === "gemini-3.5-flash") {
     patch.settings = { ...raw.settings, geminiModel: DEFAULT_SETTINGS.geminiModel };
   }

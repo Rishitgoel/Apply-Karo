@@ -58,6 +58,32 @@ export function realClick(el) {
   el.click();
 }
 
+/**
+ * Tell the page the user has finished with this control.
+ *
+ * A large share of application forms do their validation on blur, not on input:
+ * the required-field asterisk stays red, the "please enter a valid email"
+ * message never clears, and on the stricter frameworks the value is not copied
+ * into form state at all until focus leaves. Writing a value and never leaving
+ * therefore produces a field that looks filled and submits empty.
+ *
+ * Note what this does *not* do: it never calls `el.blur()` or moves real focus.
+ * The automatic pass runs while the user may well be typing somewhere else on
+ * the page, and yanking the caret out from under them would be a far worse bug
+ * than the one this fixes. React (17+) binds onBlur to the bubbling `focusout`
+ * event and handlers registered directly on the element receive a dispatched
+ * `blur`, so both are reached without touching the focus ring.
+ */
+export function commit(el) {
+  // If the user genuinely is in this control, saying they left it would be a
+  // lie the page acts on — validation fires mid-typing.
+  if (document.activeElement === el) return;
+  try {
+    el.dispatchEvent(new FocusEvent("blur", { bubbles: false, composed: true }));
+    el.dispatchEvent(new FocusEvent("focusout", { bubbles: true, composed: true }));
+  } catch { /* a control that refuses focus events is not worth aborting for */ }
+}
+
 export function key(el, k, code = k) {
   const init = { key: k, code, bubbles: true, composed: true, cancelable: true };
   el.dispatchEvent(new KeyboardEvent("keydown", init));
@@ -190,6 +216,7 @@ function fillText(el, value) {
   setValue(el, value);
   fireInput(el);
   fire(el, "change");
+  commit(el);
   return true;
 }
 
@@ -198,6 +225,7 @@ function fillContentEditable(el, value) {
   el.textContent = value;
   fireInput(el);
   fire(el, "change");
+  commit(el);
   return true;
 }
 
@@ -214,6 +242,7 @@ function fillSelect(el, value, options, ruleId) {
   if (el.value !== pick.value && pick.el) pick.el.selected = true;
   fireInput(el);
   fire(el, "change");
+  commit(el);
   return true;
 }
 
@@ -254,15 +283,47 @@ function fillChoiceGroup(el, value, options, ruleId) {
   return target.checked;
 }
 
+/**
+ * An ARIA switch: a yes/no control with no `.checked` to assign.
+ *
+ * Clicking is the only way in, and — as with an ARIA radio — success has to be
+ * read back off the attribute the widget maintains. Assigning `el.checked` on a
+ * `<div>` succeeds silently by creating a property nobody reads, which is
+ * exactly how a control reports itself filled while the page holds no answer.
+ */
+function fillSwitch(el, value) {
+  const want = asBool(value);
+  if (want === null) return false;
+  if (isChecked(el) === want) return false;        // already there; nothing written
+
+  realClick(el);
+  // Some toggles only commit on keyboard activation.
+  if (isChecked(el) !== want) key(el, " ", "Space");
+  commit(el);
+  return isChecked(el) === want;
+}
+
 function fillCheckbox(el, value) {
-  // asBool understands the long-form phrasings ("I do not wish to answer"),
-  // which a bare /^yes/ test reads as agreement.
-  const want = asBool(value) ?? false;
-  if (el.checked === want) return true;
+  // asBool understands the long-form phrasings ("I do not wish to answer",
+  // "I certify that…"), which a bare /^yes/ test reads wrongly in both
+  // directions.
+  const want = asBool(value);
+
+  // An answer we cannot read as yes or no is not a reason to *untick* the box.
+  // `?? false` meant every unrecognised value cleared it, so a consent checkbox
+  // answered with something unexpected came out worse than untouched.
+  if (want === null) return false;
+
+  // Already in the state asked for. Nothing was written, so this is not a fill —
+  // reporting it as one inflated the "filled N fields" count with boxes the page
+  // had defaulted that way itself.
+  if (el.checked === want) return false;
+
   const proxy = el.closest("label");
   if (proxy && proxy !== el) realClick(proxy);
   else { el.checked = want; realClick(el); }
   fire(el, "change");
+  commit(el);
   return el.checked === want;
 }
 
@@ -437,6 +498,7 @@ function fillDate(el, value, kind) {
   setValue(el, out);
   fireInput(el);
   fire(el, "change");
+  commit(el);
   return !!el.value;
 }
 
@@ -467,6 +529,7 @@ function fillDateGroup(field, value) {
       setValue(el, raw);
       fireInput(el);
       fire(el, "change");
+      commit(el);
       any = true;
     }
   }
@@ -545,6 +608,7 @@ function dispatchFill(field, v, ruleId, isDateRule) {
     case "radiogroup":
     case "checkboxgroup": return fillChoiceGroup(el, v, field.options, ruleId);
     case "checkbox":      return fillCheckbox(el, v);
+    case "switch":        return fillSwitch(el, v);
     case "dategroup":     return fillDateGroup(field, v);
     case "date":          return fillDate(el, v, "date");
     case "textarea":      return el.isContentEditable ? fillContentEditable(el, v) : fillText(el, v);

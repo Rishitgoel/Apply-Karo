@@ -85,7 +85,33 @@ const guards = [
   ["B.Tech classifies as bachelor",              classify("degree", "B.Tech"), "bachelor"],
   ["MBA classifies as master",                   classify("degree", "MBA"), "master"],
   ["'10+ years' contains 12",                    rangeContains("10+ years", 12), true],
-  ["'1-2 years' excludes 4",                     rangeContains("1-2 years", 4), false]
+  ["'1-2 years' excludes 4",                     rangeContains("1-2 years", 4), false],
+
+  // Consent and certification boxes. These are required on most real
+  // applications, and they are almost never worded "yes" — so every one of
+  // these used to come back null, which the checkbox filler read as "untick it".
+  ["'I agree' is Yes",                           asBool("I agree"), true],
+  ["'I accept the terms' is Yes",                asBool("I accept the terms"), true],
+  ["'I certify that the above is accurate' is Yes", asBool("I certify that the above is accurate"), true],
+  ["'I acknowledge' is Yes",                     asBool("I acknowledge"), true],
+  ["'I consent' is Yes",                         asBool("I consent"), true],
+  ["'Agree' is Yes",                             asBool("Agree"), true],
+  ["'Accept' is Yes",                            asBool("Accept"), true],
+
+  // …and the refusals still have to win, since several share a prefix.
+  ["'I do not agree' is still No",               asBool("I do not agree"), false],
+  ["'I disagree' is No",                         asBool("I disagree"), false],
+  ["'Decline' is No",                            asBool("Decline"), false],
+  ["'I don't consent' is No",                    asBool("I don't consent"), false],
+
+  // An answer that is neither must stay unreadable, so the filler leaves the
+  // box exactly as it found it rather than guessing a direction.
+  ["'Maybe' is neither",                         asBool("Maybe"), null],
+  ["an empty answer is neither",                 asBool(""), null],
+  // "N/A" lands on No, via the bare `n` branch. Left that way deliberately:
+  // against "Do you require sponsorship?" the useful reading of "not applicable"
+  // is No, and on a checkbox it means leave the box alone.
+  ["'N/A' reads as No",                          asBool("N/A"), false]
 ];
 
 for (const [desc, got, want] of guards) {

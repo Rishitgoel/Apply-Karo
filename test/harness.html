@@ -137,8 +137,13 @@
 </script>
 
 <script type="module">
-  import { scan } from "../src/engine/scan.js";
-  import { assign, RULE_BY_ID } from "../src/shared/rules.js";
+  // Cache-busted on purpose: a module graph is keyed by URL, so a plain reload
+  // re-runs this page against whatever copy of scan.js the browser already had.
+  // A green result from a stale module is worse than a red one — it is a pass
+  // for code that is not the code you just wrote.
+  const v = `?v=${Date.now()}`;
+  const { scan } = await import(`../src/engine/scan.js${v}`);
+  const { assign, RULE_BY_ID } = await import(`../src/shared/rules.js${v}`);
 
   // What each descriptor SHOULD resolve to, keyed by a stable identifier.
   const EXPECT = {

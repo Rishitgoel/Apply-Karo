@@ -357,6 +357,12 @@
                 <div class="grow">
                   <div id="active-filename" style="font-weight:600;font-size:13.5px">resume.pdf</div>
                   <div id="active-filesize" class="text-xs muted">—</div>
+                  <!-- Whether the file has actually been read. The card used to
+                       report a successful upload and stop there, which is the
+                       half of the setup that does nothing on its own: the PDF is
+                       attached to upload boxes, but every AI answer comes from
+                       the text below. -->
+                  <div id="resume-read-state" class="text-xs">—</div>
                 </div>
                 <button id="replace-resume-btn" class="btn btn-sm">Replace</button>
                 <button id="delete-resume-btn" class="btn btn-danger btn-sm">Remove</button>
@@ -428,20 +434,32 @@
             <div class="card-head">
               <div>
                 <div class="section-title">Resume text</div>
-                <div class="section-sub">Extracted automatically the first time the AI runs. Paste it by hand if your provider cannot read PDFs.</div>
+                <div class="section-sub">Read from your PDF as soon as you upload it. This is what the model answers from — the PDF itself is only what gets attached to upload boxes. Paste it by hand if your provider cannot read PDFs.</div>
               </div>
+              <!-- Left to right in the order you use them. Reversed, as it was,
+                   the card taught the sequence backwards — and led with the one
+                   button here that destroys work. -->
               <div class="row gap-2">
-                <button id="load-defaults-btn" class="btn btn-sm"
-                        title="Empty every profile field and start over. Learned answers and custom fields are kept.">Clear profile</button>
-                <button id="autofill-profile-btn" class="btn btn-sm btn-success" disabled>Fill profile from resume</button>
                 <button id="parse-resume-btn" class="btn btn-sm btn-primary" disabled>Extract text</button>
+                <button id="autofill-profile-btn" class="btn btn-sm btn-success" disabled>Fill profile from resume</button>
               </div>
             </div>
             <div class="card-body">
               <textarea id="resume-parsed-text" class="form-control mono"
                         style="min-height:230px;font-size:12px"
                         placeholder="Upload a PDF and press Extract text, or paste your resume here."></textarea>
-              <div class="form-hint"><span id="resume-text-count">0</span> characters</div>
+              <!-- "Clear profile" wipes education and experience and has nothing
+                   to do with resume text. It sat next to the two buttons above
+                   only because one of them is its inverse; down here it is still
+                   findable without being adjacent to the pair you press in
+                   sequence. -->
+              <div class="row gap-2 mt-2">
+                <div class="form-hint grow" style="margin:0">
+                  <span id="resume-text-count">0</span> characters<span id="resume-text-source"></span>
+                </div>
+                <button id="load-defaults-btn" class="btn btn-sm"
+                        title="Empty every profile field and start over. Learned answers and custom fields are kept.">Clear profile</button>
+              </div>
             </div>
           </div>
         </section>

@@ -20,15 +20,20 @@
 <div id="out">Running…</div>
 
 <script type="module">
-  import { scan, invalidateShadowCache } from "../src/engine/scan.js";
-  import { assign, RULE_BY_ID } from "../src/shared/rules.js";
-  import { fillSync } from "../src/engine/fill.js";
-  import { resolvePath } from "../src/shared/schema.js";
-  import { splitPhone } from "../src/shared/values.js";
-  import { runSteps, isSubmitLike, findAdvanceButton, hasStepIndicator } from "../src/engine/steps.js";
+  // Cache-busted on purpose — see the note in harness.html. A green result from
+  // a stale module is a pass for code that is not the code you just wrote.
+  const v = `?v=${Date.now()}`;
+  const { scan, invalidateShadowCache } = await import(`../src/engine/scan.js${v}`);
+  const { assign, RULE_BY_ID } = await import(`../src/shared/rules.js${v}`);
+  const { fillSync } = await import(`../src/engine/fill.js${v}`);
+  const { resolvePath } = await import(`../src/shared/schema.js${v}`);
+  const { splitPhone } = await import(`../src/shared/values.js${v}`);
+  const { runSteps, isSubmitLike, findAdvanceButton, hasStepIndicator } =
+    await import(`../src/engine/steps.js${v}`);
   // The real resolver, not a copy — so this harness cannot pass against logic
   // that only exists in the test.
-  import { ruleValue, jobDescriptionFromPage, MIN_JD_CHARS } from "../src/engine/index.js";
+  const { ruleValue, jobDescriptionFromPage, MIN_JD_CHARS } =
+    await import(`../src/engine/index.js${v}`);
 
   const profile = {
     personal: { firstName: "Rishit", lastName: "Goel", fullName: "Rishit Goel",

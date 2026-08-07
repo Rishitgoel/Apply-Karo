@@ -23,7 +23,7 @@ const check = (desc, got, want) => {
  * Returns what it did: whether it registered a listener, whether it tried to
  * load the engine, and a handle to invoke the listener.
  */
-function runSentinel({ href, controls = [], bodyText = "" }) {
+function runSentinel({ href, controls = [], shadow = [], bodyText = "" }) {
   const url = new URL(href);
   const listeners = [];
   let importedEngine = false;
@@ -32,13 +32,25 @@ function runSentinel({ href, controls = [], bodyText = "" }) {
   const matches = (el, sel) =>
     sel.split(",").some((s) => {
       s = s.trim();
+      if (s === "*") return true;
       const role = s.match(/^\[role="([^"]+)"\]$/);
       if (role) return el.role === role[1];
       return s.split(":")[0].toLowerCase() === (el.tag || "").toLowerCase();
     });
 
+  const query = (pool) => (sel) => pool.filter((c) => matches(c, sel));
+
+  // One custom element hosting an open shadow root, present only when the case
+  // asks for it. `querySelectorAll("*")` has to return the host for the sentinel
+  // to have anything to find — which is exactly the walk it is doing.
+  const shadowHost = shadow.length
+    ? { tag: "acme-form", shadowRoot: { querySelectorAll: query(shadow) } }
+    : null;
+
   const doc = {
-    querySelectorAll: (sel) => controls.filter((c) => matches(c, sel)),
+    querySelectorAll: (sel) =>
+      (sel === "*" ? [...controls, ...(shadowHost ? [shadowHost] : [])] : controls)
+        .filter((c) => matches(c, sel)),
     body: { textContent: bodyText, innerText: bodyText },
     documentElement: {}
   };
@@ -142,6 +154,97 @@ for (const href of ["https://example.com/", "https://boards.greenhouse.io/acme/j
   });
   s.runIdle();
   check("ignores a sign-in page", s.didImport(), false);
+}
+
+// ── Host / URL gating ────────────────────────────────────────────────────────
+//
+// The gate decides whether the automatic probe runs at all, so a host missing
+// from it is a site where the extension silently does nothing on load. These
+// pull the three regexes straight out of the source rather than restating them,
+// because a copy in the test would happily keep passing after the real one
+// regressed.
+{
+  const grab = (name, re) => {
+    const m = SRC.match(re);
+    if (!m) throw new Error(`could not find ${name} in detect.js`);
+    return new Function(`return ${m[1]}`)();
+  };
+  const ATS_HOST = grab("ATS_HOST", /const ATS_HOST = (new RegExp\([\s\S]*?"i"\));/);
+  const GENERIC = grab("GENERIC_FORM_HOST", /const GENERIC_FORM_HOST = (\/.*\/i);/);
+  const URL_HINT = grab("URL_HINT", /const URL_HINT = (\/.*\/i);/);
+  const HOST_HINT = grab("HOST_HINT", /const HOST_HINT = (\/.*\/i);/);
+
+  /** Would detect.js get as far as running its structural probe here? */
+  const gated = (href) => {
+    const u = new URL(href);
+    return !ATS_HOST.test(u.hostname) &&
+           !GENERIC.test(u.hostname) &&
+           !URL_HINT.test(u.pathname + u.search) &&
+           !HOST_HINT.test(u.hostname);
+  };
+
+  // Application flows that must at least be looked at.
+  for (const href of [
+    "https://smartapply.indeed.com/beta/indeedapply/form/questions/1",
+    "https://www.indeed.com/viewjob?jk=abc123",
+    "https://www.linkedin.com/jobs/view/4012345678/",
+    "https://job-boards.greenhouse.io/acme/jobs/12345",
+    "https://boards.eu.greenhouse.io/acme/jobs/1",
+    "https://jobs.lever.co/acme/uuid/apply",
+    "https://acme.wd1.myworkdayjobs.com/en-US/careers/job/X/Apply",
+    "https://jobs.ashbyhq.com/acme/uuid/application",
+    "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=x",
+    "https://acme.rec.pro.ukg.net/ACM1/JobBoard/x/OpportunityDetail",
+    "https://acme.dayforcehcm.com/CandidatePortal/en-US/acme/Posting/View/123",
+    "https://acme.csod.com/ux/ats/careersite/4/home/requisition/99",
+    "https://performancemanager.successfactors.eu/sfcareer/jobreqcareer?jobId=1",
+    "https://fa-abcd.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/job/123",
+    "https://acme.zohorecruit.com/jobs/Careers/123/engineer",
+    "https://acme.darwinbox.in/ms/candidate/careers/x",
+    "https://acme.gupy.io/job/eyJ",
+    "https://forms.office.com/r/abc123",
+    // A company's own board. Its landing path is "/", which a path-only test
+    // could never gate in — the hostname is the only signal there is.
+    "https://careers.acme.com/",
+    "https://jobs.acme.io/",
+    "https://apply.acme.co.uk/"
+  ]) {
+    check(`probes an application host: ${new URL(href).hostname}`, gated(href), false);
+  }
+
+  // Ordinary browsing must stay at one regex test.
+  for (const href of [
+    "https://news.ycombinator.com/item?id=1",
+    "https://mail.google.com/mail/u/0/",
+    "https://github.com/anthropics/claude-code",
+    "https://www.amazon.com/gp/cart/view.html",
+    "https://www.keka.com/",
+    "https://www.adp.com/",
+    "https://x.com/home"
+  ]) {
+    check(`skips ordinary browsing: ${new URL(href).hostname}`, gated(href), true);
+  }
+
+  // Indeed's search page has two fillable boxes. A host-level ATS entry would
+  // make it an application by definition and autofill someone's name into a job
+  // search, so the apply subdomain is listed and the bare host deliberately is not.
+  check("indeed.com is not an ATS host by itself", ATS_HOST.test("www.indeed.com"), false);
+  check("but its apply flow is", ATS_HOST.test("smartapply.indeed.com"), true);
+}
+
+// ── Shadow-DOM forms ─────────────────────────────────────────────────────────
+{
+  // A form built out of custom elements. querySelectorAll does not cross a
+  // shadow boundary, so the light DOM looks empty — and the engine that *does*
+  // understand shadow roots never got loaded to find out otherwise.
+  const s = runSentinel({
+    href: "https://acme.csod.com/ux/ats/careersite/4/home/requisition/99",
+    controls: [],
+    shadow: [input(), input(), input("file")],
+    bodyText: "Upload your resume to apply for this job"
+  });
+  s.runIdle();
+  check("finds a form inside an open shadow root", s.didImport(), true);
 }
 
 console.log(`\n  ${pass}/${pass + fails.length} passed\n`);

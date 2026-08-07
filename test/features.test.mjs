@@ -2,7 +2,9 @@
 
 import { assign, tokenize, fieldKey, RULE_BY_ID, DEMOTION } from "../src/shared/rules.js";
 import { splitPhone, parseDate, formatDate, datePartValue, semanticScore } from "../src/shared/values.js";
-import { resolvePath } from "../src/shared/schema.js";
+import {
+  resolvePath, resumeTextIsCurrent, DEFAULT_RESUME_META, safeHttpUrl
+} from "../src/shared/schema.js";
 
 let pass = 0;
 const fails = [];
@@ -112,6 +114,84 @@ check("date part: month", datePartValue(may2027, "month"), "5");
 
   check("fieldKey ignores punctuation/case", fieldKey({ label: "Current Location *" }), "current location");
   check("fieldKey falls back to name", fieldKey({ label: "", name: "work_auth" }), "work auth");
+}
+
+// ─── 6. Resume text freshness ────────────────────────────────────────────────
+//
+// Whether the stored resume text describes the resume that is stored *now*.
+// Everything downstream reads this: the service worker decides whether to
+// re-read the PDF by it, and the dashboard's status line reports it. Before it
+// existed the test was "is there any text at all", so replacing your resume left
+// the previous one's text in place and every AI answer, cover letter and job
+// match went on describing the resume you had just swapped out.
+{
+  const meta = (o) => ({ fileName: "", fileSize: "", text: "", textFileName: "", ...o });
+
+  check("no text at all is not current",
+    resumeTextIsCurrent(meta({ fileName: "cv.pdf" })), false);
+  check("whitespace is not text",
+    resumeTextIsCurrent(meta({ fileName: "cv.pdf", text: "   \n ", textFileName: "cv.pdf" })), false);
+  check("text read from the stored resume is current",
+    resumeTextIsCurrent(meta({ fileName: "cv.pdf", text: "…", textFileName: "cv.pdf" })), true);
+
+  // The case this exists for.
+  check("text from the resume it replaced is NOT current",
+    resumeTextIsCurrent(meta({ fileName: "cv_v2.pdf", text: "…", textFileName: "cv_v1.pdf" })), false);
+
+  // Hand-pasted text claims no file, and must never be discarded as stale: on a
+  // provider that cannot read a PDF it is the only copy there is.
+  check("hand-pasted text is always current",
+    resumeTextIsCurrent(meta({ fileName: "cv.pdf", text: "…", textFileName: "" })), true);
+  check("hand-pasted text survives with no resume stored at all",
+    resumeTextIsCurrent(meta({ text: "…", textFileName: "" })), true);
+
+  // Deleting the PDF keeps the text; it is still honestly attributed.
+  check("text outlives the file it came from, and says so",
+    resumeTextIsCurrent(meta({ fileName: "", text: "…", textFileName: "cv.pdf" })), false);
+
+  check("the default meta carries the stamp field",
+    Object.keys(DEFAULT_RESUME_META).includes("textFileName"), true);
+}
+
+// ─── 7. URLs that reach an href ──────────────────────────────────────────────
+//
+// The tracker renders each row's URL as a link. Escaping the string stops it
+// breaking out of the attribute and does nothing about the scheme, and
+// `javascript:` needs neither quotes nor angle brackets to survive escaping — so
+// a link like that in the dashboard runs script in the extension's own origin,
+// where the profile, the resume and the API keys live.
+//
+// Not reachable from ordinary use, because the tracker's URLs come from pages a
+// content script ran on and those are always http(s). Reachable through Settings
+// → Import: a backup is plain JSON from wherever the user got it.
+{
+  for (const ok of [
+    "https://job-boards.greenhouse.io/acme/jobs/1",
+    "http://careers.acme.com/apply?id=2",
+    "https://acme.wd1.myworkdayjobs.com/en-US/careers"
+  ]) {
+    check(`keeps an ordinary posting URL: ${ok.slice(0, 34)}`, safeHttpUrl(ok), ok);
+  }
+
+  for (const bad of [
+    "javascript:alert(document.cookie)",
+    "JavaScript:alert(1)",
+    "  javascript:alert(1)  ",
+    "data:text/html,<script>alert(1)</script>",
+    "vbscript:msgbox(1)",
+    "file:///C:/Windows/System32",
+    "chrome-extension://abc/options.html",
+    "not a url at all",
+    ""
+  ]) {
+    check(`refuses ${JSON.stringify(bad.slice(0, 30))}`, safeHttpUrl(bad), "");
+  }
+
+  // Case and leading whitespace are the usual way past a naive prefix test;
+  // `new URL` normalises both, which is why the check is a parse rather than a
+  // startsWith.
+  check("scheme matching is not case-sensitive", safeHttpUrl("HTTPS://acme.com/x"), "HTTPS://acme.com/x");
+  check("a null is not a URL", safeHttpUrl(null), "");
 }
 
 console.log(`\n  ${pass}/${pass + fails.length} passed\n`);

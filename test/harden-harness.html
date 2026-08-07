@@ -1,0 +1,250 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Apply karo — hardening harness</title>
+<!--
+  The controls that used to be invisible to the extension, and the two ways a
+  fill could quietly report a lie.
+
+  Every case here is a shape that a real application form ships and that the
+  scanner, the filler or the review pass previously mishandled:
+
+    * a consent checkbox worded "I certify…", which asBool read as unanswerable
+      and the filler then *unticked*
+    * a role="switch" yes/no toggle, which no selector matched at all
+    * a read-only date box, which isVisible() discarded outright — so it was
+      missing from the field count, from the fill and from the review
+    * a required radio group and a required checkbox, which the old
+      highlightEmpty() skipped by type, reporting a form as complete when the
+      two most common causes of a rejected submit were still unanswered
+    * on-blur validation, which never ran because nothing ever left the field
+
+  Serve the project root and open /test/harden-harness.html.
+-->
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:0;display:grid;grid-template-columns:1fr 1fr;height:100vh}
+  #stage{padding:18px;overflow:auto;border-right:1px solid #ddd}
+  #out{padding:18px;overflow:auto;background:#0f172a;color:#e2e8f0;font:12px/1.6 ui-monospace,monospace}
+  fieldset{margin:0 0 14px;border:1px solid #ccc;border-radius:6px;padding:10px}
+  legend{font-weight:600;font-size:12px}
+  .ok{color:#4ade80}.no{color:#f87171}.dim{color:#64748b}
+  h2{margin:16px 0 6px;font-size:12px;color:#93c5fd;text-transform:uppercase;letter-spacing:.05em}
+  label{display:block;margin:4px 0}
+  .switch{display:inline-block;width:38px;height:20px;border-radius:10px;background:#ccc;vertical-align:middle}
+</style>
+
+<div id="stage">
+  <!-- The box that stops a submit going through more often than any other. -->
+  <fieldset id="case-consent">
+    <legend>Consent — worded as a certification, not as "yes"</legend>
+    <label><input type="checkbox" id="certify" required>
+      I certify that the information provided is true and complete.</label>
+    <label><input type="checkbox" id="marketing">
+      Send me occasional updates about other roles.</label>
+  </fieldset>
+
+  <!-- A yes/no question built as an ARIA switch. No native control exists. -->
+  <fieldset id="case-switch">
+    <legend>ARIA switch — a toggle with no input behind it</legend>
+    <div id="relocate-q">Are you willing to relocate?</div>
+    <div role="switch" id="relocate" aria-checked="false"
+         aria-labelledby="relocate-q" tabindex="0"><span class="switch"></span></div>
+  </fieldset>
+
+  <!-- A date picker: the box is read-only and a calendar writes into it. -->
+  <fieldset id="case-readonly">
+    <legend>Read-only date box — a calendar widget owns the value</legend>
+    <label for="avail">Available from</label>
+    <input type="text" id="avail" readonly placeholder="Select a date">
+  </fieldset>
+
+  <!-- Required, unanswered, and of the two kinds review used to skip. -->
+  <fieldset id="case-required">
+    <legend>Required and unanswered</legend>
+    <div id="auth-q">Are you legally authorized to work?</div>
+    <div role="radiogroup" aria-labelledby="auth-q" id="auth">
+      <div role="radio" id="auth-yes" aria-checked="false">Yes</div>
+      <div role="radio" id="auth-no" aria-checked="false">No</div>
+    </div>
+    <label for="tos-box">Terms</label>
+    <input type="checkbox" id="tos-box" required>
+  </fieldset>
+
+  <!-- Native radios in a fieldset. Reordering groupQuestion() to prefer the
+       group's own ARIA label must not cost this the legend it depends on. -->
+  <fieldset id="case-native-radio">
+    <legend>Will you now or in the future require sponsorship?</legend>
+    <label><input type="radio" name="sponsor" value="yes"> Yes</label>
+    <label><input type="radio" name="sponsor" value="no"> No</label>
+  </fieldset>
+
+  <!-- Validation that only runs when focus leaves. -->
+  <fieldset id="case-blur">
+    <legend>On-blur validation</legend>
+    <label for="email-blur">Email</label>
+    <input type="email" id="email-blur">
+    <div id="email-error" class="dim">not validated yet</div>
+  </fieldset>
+
+  <!-- A control the page has switched off must stay switched off. -->
+  <fieldset id="case-disabled">
+    <legend>aria-disabled control</legend>
+    <div id="dis-q">Internal transfer reference</div>
+    <div role="textbox" id="dis-box" aria-disabled="true" aria-labelledby="dis-q"></div>
+  </fieldset>
+</div>
+<div id="out">Running…</div>
+
+<script type="module">
+// Imported through a per-load cache buster on purpose. A module graph is keyed
+// by URL, so an ordinary reload re-runs this page against whatever copy of
+// scan.js the browser already had — and a fix you just made shows up as a
+// failure you then go and "debug" in code that is already correct. The other
+// harnesses report a stale cache as a red result; this one refuses to have one.
+const v = `?v=${Date.now()}`;
+const { scan } = await import(`../src/engine/scan.js${v}`);
+const { fillSync } = await import(`../src/engine/fill.js${v}`);
+const { asBool } = await import(`../src/shared/values.js${v}`);
+
+const lines = [];
+let pass = 0, fail = 0;
+const check = (desc, got, want) => {
+  const g = JSON.stringify(got), w = JSON.stringify(want);
+  const ok = g === w;
+  ok ? pass++ : fail++;
+  lines.push(`<div class="${ok ? "ok" : "no"}">${ok ? "PASS" : "FAIL"}  ${desc}` +
+    (ok ? "" : `<div class="dim">      expected ${w}, got ${g}</div>`) + `</div>`);
+};
+const h2 = (t) => lines.push(`<h2>${t}</h2>`);
+
+// Wire the ARIA widgets the way a real design system does. This matters: a bare
+// <div role="radio"> with no handler cannot be toggled by anything, and the
+// filler correctly reports that it failed. Testing against unwired markup would
+// assert that we can check a box nobody can check.
+for (const id of ["auth-yes", "auth-no"]) {
+  document.getElementById(id).addEventListener("click", (e) => {
+    for (const sib of document.querySelectorAll('#auth [role="radio"]')) {
+      sib.setAttribute("aria-checked", String(sib === e.currentTarget));
+    }
+  });
+}
+const relocate = document.getElementById("relocate");
+const toggleRelocate = () =>
+  relocate.setAttribute("aria-checked", relocate.getAttribute("aria-checked") === "true" ? "false" : "true");
+relocate.addEventListener("click", toggleRelocate);
+
+// On-blur validation, the way a great many forms actually do it.
+const emailBox = document.getElementById("email-blur");
+emailBox.addEventListener("blur", () => {
+  document.getElementById("email-error").textContent =
+    /.+@.+\..+/.test(emailBox.value) ? "valid" : "invalid";
+});
+
+const fields = scan();
+const byId = (id) => fields.find((f) => f.el.id === id);
+const optionOf = (f, id) => (f?.options || []).find((o) => o.el.id === id);
+
+// ─── The scanner has to see these at all ─────────────────────────────────────
+h2("Coverage — controls the scanner used to miss");
+
+check("a role=switch question is scanned", !!byId("relocate"), true);
+// Not "checkboxgroup": a switch is one boolean control. Grouped, its question
+// was read off the enclosing fieldset instead of its own aria-labelledby.
+check("…as a single boolean control", byId("relocate")?.kind, "switch");
+check("…and reads its question, not the section it sits in",
+  /willing to relocate/i.test(byId("relocate")?.rawLabel || ""), true);
+check("…and offers no options to answer it with", byId("relocate")?.options, null);
+
+check("a read-only box is still on the books", !!byId("avail"), true);
+check("…but is withheld from the fill", byId("avail")?.readOnly, true);
+check("…which is what keeps a rule off it", byId("avail")?.skip, true);
+
+check("an aria-disabled control is not scanned", !!byId("dis-box"), false);
+
+// The other half of the label-precedence change. Native radios carry no ARIA of
+// their own, so the fieldset legend is the question — and preferring an explicit
+// aria-label on the group must not cost them their fallback.
+const sponsor = fields.find((f) => f.name === "sponsor");
+check("native radios in a fieldset still read the legend",
+  /require sponsorship/i.test(sponsor?.rawLabel || ""), true);
+check("…and group into one question, not two", sponsor?.options?.length, 2);
+
+// A radiogroup labelled by a list of ids. Passing the raw attribute to
+// getElementById finds nothing the moment a page names more than one element.
+check("radiogroup question resolves through aria-labelledby",
+  /legally authorized/i.test(byId("auth")?.rawLabel || ""), true);
+
+// ─── Consent boxes ───────────────────────────────────────────────────────────
+h2("Consent — the box that most often blocks a submit");
+
+check("'I certify…' is readable as agreement", asBool("I certify that this is true"), true);
+
+const certify = byId("certify");
+check("the certification box is scanned", !!certify, true);
+check("filling it with the words on it ticks it",
+  fillSync(certify, "I certify that the information provided is true and complete."),
+  true);
+check("…and the box is actually ticked", document.getElementById("certify").checked, true);
+
+// An answer that is neither yes nor no must leave the control exactly as found.
+// `?? false` used to turn every unreadable answer into an untick.
+const marketing = byId("marketing");
+check("an unreadable answer is not a fill", fillSync(marketing, "Maybe later"), false);
+check("…and the box is left alone", document.getElementById("marketing").checked, false);
+
+// Already in the state asked for: nothing was written, so this is not a fill.
+// Counting it inflated "filled N fields" with boxes the page defaulted itself.
+check("a box already in the wanted state is not counted as filled",
+  fillSync(byId("marketing"), "No"), false);
+
+// ─── On-blur validation ──────────────────────────────────────────────────────
+h2("Commit — validation that only runs on blur");
+
+check("email fills", fillSync(byId("email-blur"), "rishitgoel259@gmail.com"), true);
+check("…and the page's blur validation ran",
+  document.getElementById("email-error").textContent, "valid");
+
+// The commit must never move real focus: the automatic pass runs while the user
+// may be typing somewhere else entirely.
+const parked = document.getElementById("certify");
+parked.focus();
+fillSync(byId("avail") || byId("email-blur"), "x@y.com");
+check("filling does not steal focus", document.activeElement, parked);
+
+// ─── Review ──────────────────────────────────────────────────────────────────
+h2("Review — what 'still empty' has to include");
+
+// highlightEmpty lives in index.js, which imports chrome.* at module scope, so
+// the reachable half is asserted here: the scanner surfaces these as unfilled,
+// and each carries the required flag the review pass reads.
+const auth = byId("auth");
+check("an unanswered ARIA radio group counts as unfilled", auth?.filled, false);
+check("…and carries both options", auth?.options?.length, 2);
+check("an unticked required checkbox is scanned", !!byId("tos-box"), true);
+check("…and reports itself unfilled", byId("tos-box")?.filled, false);
+check("the required attribute is readable from the descriptor",
+  byId("tos-box")?.el.required, true);
+
+// Answering the group must select exactly one option and leave the other alone.
+check("the ARIA group takes an answer", fillSync(auth, "Yes"), true);
+check("…selecting Yes", document.getElementById("auth-yes").getAttribute("aria-checked"), "true");
+check("…and not No", document.getElementById("auth-no").getAttribute("aria-checked"), "false");
+
+// ─── Switches ────────────────────────────────────────────────────────────────
+h2("Switch — a boolean with no .checked to assign");
+
+check("a switch takes yes", fillSync(byId("relocate"), "Yes"), true);
+check("…and the widget's own state moved",
+  document.getElementById("relocate").getAttribute("aria-checked"), "true");
+// Re-answering with the state it already holds writes nothing, so it is not a
+// fill. Reporting it as one would both inflate the count and, on a toggle,
+// actively flip the answer to the wrong one.
+check("re-answering a switch that already agrees is not a fill",
+  fillSync(scan().find((f) => f.el.id === "relocate"), "Yes"), false);
+check("…and it was not toggled off",
+  document.getElementById("relocate").getAttribute("aria-checked"), "true");
+
+// ─── Report ──────────────────────────────────────────────────────────────────
+document.getElementById("out").innerHTML =
+  `<div style="font-size:14px;margin-bottom:10px">${pass}/${pass + fail} passed</div>` + lines.join("");
+document.title = fail ? `FAIL (${fail})` : `PASS (${pass})`;
+</script>

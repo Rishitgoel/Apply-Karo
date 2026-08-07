@@ -63,6 +63,26 @@ const send = (message) => {
   return chrome.tabs.sendMessage(tab.id, message).catch(() => { noReceiver = true; return null; });
 };
 
+/**
+ * Run an action across every frame of the tab and get one combined answer.
+ *
+ * Not `chrome.tabs.sendMessage` directly: that broadcasts to all frames but
+ * keeps only the first reply, and on an embedded board — Greenhouse or Lever
+ * inside a company careers page — the frame holding the form is not the frame
+ * that answers. The service worker fans the action out and adds the results up.
+ */
+const act = async (action, extra = {}) => {
+  if (!tab?.id) return null;
+  const r = await chrome.runtime
+    .sendMessage({ type: "tab_action", action, tabId: tab.id, ...extra })
+    .catch(() => null);
+  // No frame acknowledged, so no engine is loaded anywhere in this tab. That is
+  // a different thing from a page the extension cannot touch at all, and only
+  // the second is hopeless — so it is reported as a miss, not as an error.
+  if (!r?.ok || !r.frames) { noReceiver = !r?.ok; return null; }
+  return r;
+};
+
 const notifyPage = () => send({ type: "rf_settings_changed" });
 
 // ─── Header state ────────────────────────────────────────────────────────────
@@ -114,11 +134,14 @@ resumeInput.addEventListener("change", () => {
   reader.onload = async (e) => {
     const kb = Math.round(file.size / 1024);
     ctx.resumeMeta = {
+      ...ctx.resumeMeta,
       fileName: file.name,
-      fileSize: kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`,
-      // A new PDF makes the old extracted text wrong. Clearing it means the
-      // next AI run re-reads the file rather than answering from the last one.
-      text: ""
+      fileSize: kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`
+      // A new PDF makes the old extracted text wrong, and the next AI run must
+      // re-read rather than answering from the last resume. That is now settled
+      // by `textFileName` no longer matching `fileName`, which says the same
+      // thing without destroying text the user may have pasted in by hand —
+      // the only copy there is on a provider that cannot read a PDF.
     };
     await Promise.all([saveResumeFile(e.target.result), save({ resumeMeta: ctx.resumeMeta })]);
     btn.disabled = false;
@@ -247,7 +270,7 @@ function paintPageCard(status) {
 
 async function refreshStatus() {
   if (!host) { paintPageCard(null); return; }
-  const status = await send({ type: "rf_status" });
+  const status = await act("rf_status");
   lastStatus = status?.ok ? status : null;
   paintPageCard(lastStatus);
   undoBtn.disabled = !lastStatus?.canUndo;
@@ -262,9 +285,9 @@ await refreshStatus();
  * not an application and never loaded the engine. Force it in and retry —
  * pressing a button here is an unambiguous signal.
  */
-async function withEngine(message) {
+async function withEngine(action, extra = {}) {
   noReceiver = false;
-  let res = await send(message);
+  let res = await act(action, extra);
   if (res) return res;
 
   noReceiver = false;
@@ -274,7 +297,7 @@ async function withEngine(message) {
   for (let i = 0; i < 6 && !res; i++) {
     await new Promise((r) => setTimeout(r, 250));
     noReceiver = false;
-    res = await send(message);
+    res = await act(action, extra);
   }
   return res;
 }
@@ -299,7 +322,7 @@ fillBtn.addEventListener("click", async () => {
   busy(true, "Filling…");
   setFooter("Working…");
 
-  const res = await withEngine({ type: "rf_fill" });
+  const res = await withEngine("rf_fill");
   busy(false);
 
   if (!res) { unreachable(); return; }
@@ -318,7 +341,7 @@ stepsBtn.addEventListener("click", async () => {
   busy(true, "Stepping…");
   setFooter("Filling each step. It never submits.");
 
-  const res = await withEngine({ type: "rf_steps" });
+  const res = await withEngine("rf_steps");
   busy(false);
 
   if (!res?.ok) { unreachable(); return; }
@@ -327,16 +350,16 @@ stepsBtn.addEventListener("click", async () => {
 });
 
 reviewBtn.addEventListener("click", async () => {
-  const res = await withEngine({ type: "rf_highlight" });
+  const res = await withEngine("rf_highlight");
   if (!res?.ok) { unreachable(); return; }
   setFooter(res.empty
-    ? `<strong>${res.empty}</strong> field(s) still empty, outlined on the page.`
+    ? `<strong>${res.empty}</strong> field(s) still empty${res.required ? `, <strong>${res.required}</strong> required` : ""}, outlined on the page.`
     : "Every visible field has a value.");
   setTimeout(() => window.close(), 900);
 });
 
 undoBtn.addEventListener("click", async () => {
-  const res = await send({ type: "rf_undo" });
+  const res = await act("rf_undo");
   if (!res?.ok) { unreachable(); return; }
   await refreshStatus();
   setFooter(res.restored

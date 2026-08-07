@@ -419,17 +419,22 @@ export function mount({
     }
   });
 
-  undoBtn.addEventListener("click", () => {
-    const n = onUndo();
+  // Both of these now cover every frame of the tab, so both are asynchronous —
+  // the frames holding the form answer through the service worker.
+  undoBtn.addEventListener("click", async () => {
+    const n = await onUndo();
     setCount(0);
     setStatus(n ? `Put ${n} field(s) back the way they were.` : "Nothing to undo.", n ? "good" : "warn");
     syncUndo();
   });
 
-  $("[data-review]").addEventListener("click", () => {
-    const n = onHighlight();
-    setStatus(n ? `${n} field(s) still empty, outlined in red.` : "Every visible field has a value.",
-              n ? "warn" : "good");
+  $("[data-review]").addEventListener("click", async () => {
+    const { count, required } = await onHighlight();
+    // The required count is the one that decides whether the form will submit,
+    // so it leads when there is one.
+    const detail = required ? `${count} still empty, ${required} of them required` : `${count} field(s) still empty`;
+    setStatus(count ? `${detail}, outlined in red.` : "Every visible field has a value.",
+              required ? "bad" : count ? "warn" : "good");
   });
 
   letterBtn.addEventListener("click", async () => {

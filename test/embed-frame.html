@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Apply — Acme</title>
+<!--
+  The board's own page, as it appears inside an employer's careers site. This is
+  Greenhouse's field naming, reduced to the part that matters. Loaded only by
+  embed-harness.html.
+-->
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:0;padding:14px}
+  label{display:block;margin:8px 0 2px;font-size:12px;font-weight:600}
+  input[type=text],input[type=email],input[type=tel]{width:100%;padding:6px;box-sizing:border-box}
+  fieldset{margin:12px 0 0;border:1px solid #ccc;border-radius:6px;padding:8px}
+  legend{font-size:12px;font-weight:600}
+</style>
+
+<h2 style="margin:0;font-size:15px">Apply for this job</h2>
+
+<label for="fn">First Name *</label>
+<input type="text" id="fn" name="job_application[first_name]">
+
+<label for="ln">Last Name *</label>
+<input type="text" id="ln" name="job_application[last_name]">
+
+<label for="em">Email *</label>
+<input type="email" id="em" name="job_application[email]">
+
+<label for="ph">Phone</label>
+<input type="tel" id="ph" name="job_application[phone]">
+
+<div id="resume_fieldset">
+  <label>Resume/CV</label>
+  <button type="button">Attach</button>
+  <input type="file" id="resume" name="job_application[resume]" style="display:none" accept=".pdf,.doc,.docx">
+</div>
+
+<fieldset>
+  <legend>Are you legally authorized to work in the United States?</legend>
+  <label><input type="radio" name="work_auth" value="y"> Yes</label>
+  <label><input type="radio" name="work_auth" value="n"> No</label>
+</fieldset>
+
+<script type="module">
+  // Exposed so the parent harness can ask what this frame sees, standing in for
+  // the service worker's fan-out. The real thing is cross-origin and cannot be
+  // read into at all, which is the reason the coordination goes through the
+  // extension rather than through the DOM.
+  const { scan } = await import(`../src/engine/scan.js?v=${Date.now()}`);
+  window.__scan = () => scan();
+  window.parent.postMessage({ type: "embed-frame-ready" }, "*");
+</script>

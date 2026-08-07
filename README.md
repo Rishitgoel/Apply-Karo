@@ -73,6 +73,27 @@ clears itself when you navigate.
 
 ## How it works
 
+**The form is often not in the page you are looking at.** Greenhouse, Lever,
+Workable and SmartRecruiters all ship an embed, and employers use it: the careers
+page is theirs and the application is a third-party iframe inside it. That breaks
+two assumptions at once. The top frame has no fields, so it loaded no engine and
+the corner panel never appeared; and `chrome.tabs.sendMessage` broadcasts to
+every frame but keeps only the *first* reply, so the popup either reported the
+top frame's zero or got a closed port and said "Chrome blocks extensions here" —
+while the iframe had just filled twenty fields.
+
+So a fill is coordinated by the service worker rather than answered down the
+broadcast channel: every frame that takes part acknowledges, does its share, and
+reports separately, and the totals are added up. Detection also loads the engine
+into a top frame that merely *contains* an ATS iframe, so the panel is there.
+Only the top frame writes the tracker row — the frame doing the work would file
+it under greenhouse.io rather than under the employer whose page you were on.
+
+This deliberately does not use `window.postMessage` between frames, which would
+have been less code. Page script can post messages too, and a fill spends your
+real name, address and phone number — "a page cannot ask for one" is worth more
+than the saving.
+
 Two tiers, so the extension costs nothing on pages that are not applications:
 
 | File | Role |
@@ -93,31 +114,91 @@ attribute, name/id tokens, visible label, input type, placeholder, section headi
 then assigns globally, best pairs first. A generic rule cannot steal a field from a
 specific one, because the specific rule scores higher on it.
 
+## What gets detected
+
+Three gates, cheapest first, and a page has to pass only one of them to be looked
+at: a known ATS host, a job-shaped URL, or a known form builder. Everything else
+stops at one regex test.
+
+The host list covers the five big boards (Greenhouse, Lever, Workday, Ashby,
+SmartRecruiters), the mid-market SaaS boards, the enterprise HCM suites where the
+long badly-labelled applications actually live — SuccessFactors, Oracle
+Recruiting, Cornerstone, Dayforce, UKG, ADP WorkforceNow, Taleo, Brassring — and
+the regional volume boards (Zoho Recruit, Darwinbox, Freshteam, Instahyre, Gupy).
+
+Two details in that list are deliberate and worth keeping that way:
+
+- **`smartapply.indeed.com` is listed; `indeed.com` is not.** A host in this list
+  means "a form here is an application by definition", and Indeed's search page
+  has two fillable boxes. Listing the bare host would autofill somebody's name
+  into a job search.
+- **The hostname is searched for job words, not just the path.** A company's own
+  board is at `careers.acme.com` or `jobs.acme.com` and its landing path is `/`,
+  so a path-only test gated out the entire self-hosted category — which is a
+  large share of where applications actually are.
+
+Passing a gate only earns a structural probe; the probe still has to find real
+controls, and on a general form builder it also has to find words that read as a
+job application, because a Google Form is just as likely to be a lunch order.
+
+The probe looks inside open shadow roots when the light DOM comes back empty.
+`querySelectorAll` does not cross a shadow boundary, so a form built out of
+custom elements looked like a blank page — and the engine, which does understand
+shadow DOM, was never loaded to find out otherwise.
+
+Single-page boards get a mutation watcher, budgeted by *batches that actually
+brought in form controls* rather than by batches. A React board burns thirty
+undifferentiated batches during hydration alone, long before the form renders,
+so the old budget was routinely spent before there was anything to find. A
+client-side route change resets it, because browsing a board and then opening a
+posting is one of the most ordinary ways to arrive at an application.
+
 ## Tests
 
 ```bash
-for t in detect ai match values features upload jobmatch; do node test/$t.test.mjs; done
+for t in detect ai match values features upload jobmatch frames; do node test/$t.test.mjs; done
 ```
 
-257 cases: field matching against real Greenhouse / Lever / Workday / Ashby
+341 cases: field matching against real Greenhouse / Lever / Workday / Ashby
 markup, the dropdown-vs-text-box problem below, plus repeated sections, phone
-splitting, date parsing, correction demotion, resume-upload targeting, and the
-job-match scoring described below.
+splitting, date parsing, correction demotion, resume-upload targeting, the
+job-match scoring described below, and the host/URL gate — every ATS in the list
+is asserted to be reachable, and ordinary browsing to still cost one regex test.
 
 DOM behaviour is covered by browser harnesses: `harness.html` for scanning
 (23 checks), `harness2.html` for the features below including the submit guards
-and job-description extraction (47 checks), and `upload-harness.html` for resume
+and job-description extraction (47 checks), `upload-harness.html` for resume
 attachment against the markup Greenhouse, Lever and Workday actually ship — the
-hidden input, the drop zone, the photo box next door (19 checks). All import the
-real modules — nothing is reimplemented in the test.
+hidden input, the drop zone, the photo box next door (19 checks) — and
+`harden-harness.html` for the controls that used to be invisible: consent
+checkboxes, ARIA switches, read-only date boxes, on-blur validation (33 checks).
+All import the real modules — nothing is reimplemented in the test.
 
 ```bash
 python -m http.server 8731
 ```
 
-Then open `http://127.0.0.1:8731/test/harness.html`, `…/harness2.html` and
-`…/upload-harness.html`. Each page's title reports PASS or FAIL, so a stale
-module cache shows up as a failure rather than a wrong green.
+Then open `http://127.0.0.1:8731/test/harness.html`, `…/harness2.html`,
+`…/upload-harness.html` and `…/harden-harness.html`. Each page's title reports
+PASS or FAIL.
+
+`embed-harness.html` is the embedded-board case: a careers page whose form lives
+in an iframe, asserting that the top frame has nothing to fill, that detection
+notices the embed anyway, and that the tab's count comes out as the iframe's
+rather than the top frame's zero (17 checks).
+
+`dashboard-harness.html` is a viewer rather than a suite: it mounts the real
+`options.html` and `options.js` against a stubbed `chrome.*` so the dashboard can
+be used without packing the extension. `?s=none|read|stale|pasted` switches the
+resume state. It is deliberately not assertions — what goes wrong in 1 400 lines
+of DOM wiring is visual (a button in the wrong order, a card claiming a resume
+has been read when it has not), and that does not survive being reduced to a
+boolean.
+
+Every harness imports its modules through a per-load cache buster. A module graph
+is keyed by URL, so a plain reload re-runs the page against whatever copy the
+browser already had — and a green result from a stale module is a pass for code
+that is not the code you just wrote, which is a worse failure than a red one.
 
 ## Repeated sections, dates, phones and steps
 
@@ -270,10 +351,20 @@ it must never invent employers, titles, dates, degrees, GPAs, certifications or
 visa status, because those are checkable and a wrong one is your problem, not
 the model's. Those come from your profile and resume verbatim or not at all.
 
-Your resume is parsed to text automatically the first time the AI runs, and
-cached. Previously this only happened if you pressed *Parse Resume Text* by
-hand, so in practice the model was answering from the profile summary alone —
-which is why it left most open questions empty.
+Your resume is read to text as soon as you upload it, and cached. That text is
+what the model answers from; the PDF itself is only what gets attached to upload
+boxes. The two are easy to confuse, so the Resume tab says outright whether the
+file has been read, and the service worker reads it on demand as a backstop.
+
+**The text is stamped with the file it came from.** Replacing your resume used to
+leave the previous one's text in place, and everything downstream took it: the AI
+answered from the resume you had just swapped out, and so did the cover letter
+and the job match. Nothing on screen said so, because "is there text" was the
+only question anyone asked. The stamp turns that into "is this text about the
+resume that is stored now" — which the dashboard reports, and which makes a
+re-read decidable instead of a guess. Text you typed or pasted claims no file and
+is never treated as stale, because on a provider that cannot read a PDF it is the
+only copy there is.
 
 Prose answers are written to a house style aimed at not reading as machine
 output: varied sentence length, concrete specifics over adjectives, no

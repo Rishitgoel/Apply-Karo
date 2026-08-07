@@ -32,16 +32,29 @@ const FIELD_SELECTOR = [
   '[role="radiogroup"]',
   '[role="radio"]',
   '[role="checkbox"]',
-  '[role="listbox"]'
+  '[role="listbox"]',
+  // A styled yes/no toggle. Consent and "are you willing to relocate" questions
+  // ship as one of these on plenty of modern forms, and without the role they
+  // read as decorative markup — the question is simply not on the page.
+  '[role="switch"]',
+  '[role="spinbutton"]'
 ].join(",");
 
 /** An ARIA control that stands in for a native one. */
 const ARIA_ROLE = {
   radio: "radio",
   checkbox: "checkbox",
+  // A switch is a single boolean control, not a set of choices, so it gets its
+  // own kind rather than being folded into `checkbox`. Folded in, it was swept
+  // up by the choice-grouping branch below and became a one-option
+  // "checkboxgroup" whose question was read off the enclosing fieldset — so
+  // "Are you willing to relocate?" arrived at the matcher as the name of
+  // whatever section the toggle happened to sit in.
+  switch: "switch",
   listbox: "combobox",
   combobox: "combobox",
-  textbox: "text"
+  textbox: "text",
+  spinbutton: "text"
 };
 
 const HEADING_SELECTOR = "h1,h2,h3,h4,h5,h6,legend,[role=heading]";
@@ -472,6 +485,9 @@ function groupDateParts(fields) {
 
 function isVisible(el, type) {
   if (el.disabled) return false;
+  // An ARIA control has no `.disabled`; this attribute is the only statement it
+  // makes. Writing into one is writing into a control the page has switched off.
+  if (el.getAttribute?.("aria-disabled") === "true") return false;
 
   // A file input is almost never visible in its own right. Every ATS renders a
   // styled button or drop zone and hides the real control behind it —
@@ -481,7 +497,12 @@ function isVisible(el, type) {
   // real application, which is why the resume was almost never attached.
   if (type === "file") return el.isConnected !== false;
 
-  if (el.readOnly && type !== "combobox") return false;
+  // NOTE: `readOnly` is deliberately NOT a rejection. A read-only box is one we
+  // must not write to, but it is still a field on the form — date pickers and
+  // "click to choose" widgets are read-only text inputs on a great many sites,
+  // and dropping them here made them invisible to the field count and to
+  // "highlight what's still empty" as well as to the filler. scan() marks them
+  // instead, which withholds them from the fill and keeps them on the books.
 
   const proxied = type === "radio" || type === "checkbox";
 
@@ -702,6 +723,35 @@ function optionLabelFor(el, labelMap) {
  * authorization questions were routinely missed.
  */
 function groupQuestion(el) {
+  // The group's own ARIA label comes first, and the ordering is the point. A
+  // fieldset legend names whatever section the group sits in — "Additional
+  // information", "Required and unanswered" — while an aria-label on the group
+  // itself is the question being asked. Checking the legend first meant every
+  // ARIA radio group inside a fieldset was matched against the section heading,
+  // so two different questions in one section looked identical to the matcher.
+  const rg = el.closest?.('[role="radiogroup"],[role="group"]');
+  if (rg) {
+    const aria = rg.getAttribute("aria-label");
+    if (aria) return normalize(aria);
+    // `aria-labelledby` is a *list* of ids. Passing the raw attribute to
+    // getElementById finds nothing the moment a page names two elements —
+    // "legend-1 hint-1" is not an id — and the question then fell through to the
+    // section heading, which on a form is usually the name of the whole section.
+    const by = rg.getAttribute("aria-labelledby");
+    if (by) {
+      const root = rg.getRootNode?.() || document;
+      let parts = "";
+      for (const id of by.split(/\s+/)) {
+        const ref = root.getElementById?.(id) || document.getElementById(id);
+        if (ref) parts += " " + textOf(ref, 120);
+      }
+      const t = normalize(parts);
+      if (t) return t;
+    }
+  }
+
+  // Then the enclosing fieldset's legend. For native radios — which carry no
+  // ARIA of their own — this is the question, and it stays the main path.
   const fs = el.closest?.("fieldset");
   if (fs) {
     const lg = fs.querySelector(":scope > legend");
@@ -710,19 +760,7 @@ function groupQuestion(el) {
       if (t) return t;
     }
   }
-  const rg = el.closest?.('[role="radiogroup"],[role="group"]');
-  if (rg) {
-    const aria = rg.getAttribute("aria-label");
-    if (aria) return normalize(aria);
-    const by = rg.getAttribute("aria-labelledby");
-    if (by) {
-      const ref = document.getElementById(by);
-      if (ref) {
-        const t = textOf(ref, 200);
-        if (t) return t;
-      }
-    }
-  }
+
   // Fall back to the nearest heading-ish text above the group container.
   const sec = sectionFor(el);
   return sec.text || "";
@@ -863,6 +901,13 @@ export function scan() {
       filled: false
     };
 
+    // Read-only, and not the visible half of a dropdown: the page is telling us
+    // this value is not typed in. Counted and reviewable, never written to.
+    if (el.readOnly && kind !== "combobox") {
+      d.readOnly = true;
+      d.skip = true;
+    }
+
     if (kind === "select") {
       d.options = Array.from(el.options)
         .map((o) => ({ el: o, label: normalize(o.text), value: o.value }))
@@ -871,6 +916,12 @@ export function scan() {
     } else if (kind === "checkbox") {
       d.filled = isAria(el) ? ariaChecked(el) : el.checked;
       d.options = [{ el, label: optionLabelFor(el, labelMap), value: el.value || "" }];
+    } else if (kind === "switch") {
+      // Its state is the answer, and it offers no options to choose between —
+      // describing it with any would invite the model to reply with the toggle's
+      // own wording instead of yes or no.
+      d.filled = ariaChecked(el);
+      d.options = null;
     } else if (kind === "file") {
       d.filled = !!(el.files && el.files.length > 0);
       d.accept = el.getAttribute("accept") || "";

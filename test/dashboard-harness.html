@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Apply karo — dashboard harness</title>
+<!--
+  Loads the real dashboard against a stubbed chrome.* so its layout and its
+  resume status line can be looked at without packing the extension.
+
+  This is a viewer, not an assertion suite: options.js is 1 400 lines of DOM
+  wiring whose failures are visual (a button in the wrong order, a status that
+  claims a resume has been read when it has not), and those do not survive being
+  reduced to a boolean. Change SCENARIO to see each state.
+
+  Serve the project root and open /test/dashboard-harness.html.
+-->
+<script>
+  // Which resume state to render. The third is the one that used to be
+  // invisible and silently wrong.
+  const SCENARIO = new URLSearchParams(location.search).get("s") || "stale";
+
+  const RESUME_META = {
+    none:   { fileName: "Rishit_Goel_Resume.pdf", fileSize: "77 KB", text: "", textFileName: "" },
+    read:   { fileName: "Rishit_Goel_Resume.pdf", fileSize: "77 KB",
+              text: "RISHIT GOEL\n".repeat(400), textFileName: "Rishit_Goel_Resume.pdf" },
+    stale:  { fileName: "Rishit_Goel_Resume_v2.pdf", fileSize: "81 KB",
+              text: "RISHIT GOEL\n".repeat(400), textFileName: "Rishit_Goel_Resume.pdf" },
+    pasted: { fileName: "Rishit_Goel_Resume.pdf", fileSize: "77 KB",
+              text: "RISHIT GOEL\n".repeat(400), textFileName: "" }
+  }[SCENARIO];
+
+  const STORE = {
+    profile: { personal: { firstName: "Rishit", lastName: "Goel", email: "rishitgoel259@gmail.com" },
+               education: [], experience: [], summary: "", skills: "", customFields: {} },
+    learned: {},
+    settings: { provider: "gemini", geminiApiKey: "AIzaSyTEST", geminiModel: "gemini-3.5-flash-lite",
+                groqApiKey: "", groqModel: "llama-3.3-70b-versatile", theme: "system",
+                aiAutofillEnabled: true, disabledSites: [] },
+    resumeMeta: RESUME_META,
+    corrections: {},
+    resumeFile: { base64: "data:application/pdf;base64,JVBERi0xLjQK" },
+    history: [], letters: []
+  };
+
+  const pick = (keys) => {
+    if (keys === null || keys === undefined) return { ...STORE };
+    const list = Array.isArray(keys) ? keys : [keys];
+    const out = {};
+    for (const k of list) if (k in STORE) out[k] = STORE[k];
+    return out;
+  };
+
+  window.chrome = {
+    runtime: {
+      getManifest: () => ({ version: "2.1.0" }),
+      getURL: (p) => p,
+      openOptionsPage: () => {},
+      lastError: null,
+      // Nothing here talks to a model; the buttons that would are exercised by
+      // clicking them and watching the UI, not by a real API call.
+      sendMessage: async (msg) => {
+        if (msg.type === "parse_resume") {
+          await new Promise((r) => setTimeout(r, 600));
+          return { ok: true, text: "RISHIT GOEL — parsed just now\n".repeat(300) };
+        }
+        if (msg.type === "extract_profile") {
+          await new Promise((r) => setTimeout(r, 600));
+          return { ok: true, profile: { personal: { city: "New Delhi", country: "India" } } };
+        }
+        if (msg.type === "test_key") return { ok: true, reply: "OK" };
+        return { ok: true };
+      }
+    },
+    storage: {
+      local: {
+        get: async (keys) => pick(keys),
+        set: async (patch) => { Object.assign(STORE, patch); },
+        remove: async () => {},
+        clear: async () => {},
+        getBytesInUse: async () => 128000
+      }
+    },
+    tabs: { query: async () => [{ id: 1, url: "https://example.com" }], sendMessage: async () => null }
+  };
+</script>
+<link rel="stylesheet" href="../styles.css">
+<div id="harness-note" style="position:fixed;right:12px;bottom:12px;z-index:99;font:12px/1.4 system-ui;
+     background:#0f172a;color:#e2e8f0;padding:8px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3)">
+  scenario: <strong id="hs"></strong> —
+  <a href="?s=none" style="color:#93c5fd">none</a> ·
+  <a href="?s=read" style="color:#93c5fd">read</a> ·
+  <a href="?s=stale" style="color:#93c5fd">stale</a> ·
+  <a href="?s=pasted" style="color:#93c5fd">pasted</a>
+</div>
+<script>document.addEventListener("DOMContentLoaded", () => { document.getElementById("hs").textContent = SCENARIO; });</script>
+<!--
+  options.html's own <body> is injected below at load, so the dashboard renders
+  exactly as it ships rather than as a copy that can drift from it.
+-->
+<div id="mount"></div>
+<script type="module">
+  const v = `?v=${Date.now()}`;
+
+  // options.js imports its modules by plain relative path, so a query string on
+  // options.js alone busts nothing underneath it — the browser serves whatever
+  // copy of schema.js it already had, and the page dies on an export that the
+  // stale copy does not have yet. `cache: "reload"` rewrites those entries
+  // before the import runs, which is the only handle there is on a static graph.
+  await Promise.all([
+    "../options.js", "../src/shared/schema.js", "../src/shared/ai.js",
+    "../src/shared/icons.js", "../src/shared/theme.js", "../src/shared/ui.js",
+    "../src/shared/contact.js", "../styles.css"
+  ].map((u) => fetch(u, { cache: "reload" }).catch(() => {})));
+
+  const html = await (await fetch(`../options.html${v}`)).text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  document.getElementById("mount").replaceWith(...doc.body.childNodes);
+  // Templates and the module both have to come from the real files.
+  await import(`../options.js${v}`);
+</script>

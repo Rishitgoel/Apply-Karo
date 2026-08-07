@@ -67,7 +67,7 @@ export const toastError = (err) =>
  *   danger           — style the primary button as destructive
  * @returns {Promise<object|null>} the field values, or null if dismissed.
  */
-export function dialog({ title, body = "", fields = [], confirmText = "Confirm", cancelText = "Cancel", danger = false } = {}) {
+export function dialog({ title, body = "", fields = [], confirmText = "Confirm", cancelText = "Cancel", danger = false, single = false } = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-host";
@@ -86,7 +86,7 @@ export function dialog({ title, body = "", fields = [], confirmText = "Confirm",
         <div class="modal-head"><div class="modal-title">${esc(title)}</div></div>
         <div class="modal-body">${body ? `<p>${esc(body)}</p>` : ""}${fieldHtml}</div>
         <div class="modal-foot">
-          <button class="btn" data-cancel>${esc(cancelText)}</button>
+          ${single ? "" : `<button class="btn" data-cancel>${esc(cancelText)}</button>`}
           <button class="btn ${danger ? "btn-danger" : "btn-primary"}" data-ok>${esc(confirmText)}</button>
         </div>
       </div>`;
@@ -114,7 +114,7 @@ export function dialog({ title, body = "", fields = [], confirmText = "Confirm",
     }
 
     overlay.querySelector("[data-ok]").addEventListener("click", accept);
-    overlay.querySelector("[data-cancel]").addEventListener("click", () => done(null));
+    overlay.querySelector("[data-cancel]")?.addEventListener("click", () => done(null));
     overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) done(null); });
     document.addEventListener("keydown", onKey, true);
 
@@ -126,6 +126,19 @@ export function dialog({ title, body = "", fields = [], confirmText = "Confirm",
 export async function confirmDialog(opts) {
   const r = await dialog({ confirmText: "Confirm", ...opts, fields: [] });
   return r !== null;
+}
+
+/**
+ * Say something and wait to be acknowledged. One button, no choice to make.
+ *
+ * This is the missing third of the set. Without it, anything that had to *tell*
+ * the user something either borrowed confirmDialog — which asks a yes/no
+ * question that does not exist, and lets a stray Escape look like a decision —
+ * or fell back to a toast, which is the right shape for "saved" and the wrong
+ * one for "this cannot proceed until you do something".
+ */
+export async function alertDialog(opts) {
+  await dialog({ confirmText: "OK", ...opts, fields: [], single: true });
 }
 
 /** One text field. Resolves the string, or null if dismissed. */

@@ -372,6 +372,13 @@ small { font-size: 12px; }
 .grow { flex: 1; min-width: 0; }
 .muted { color: var(--text-muted); }
 .faint { color: var(--text-faint); }
+
+/* Text-colour utilities. `.fit-strong`/`.fit-fair`/`.fit-weak` below are the
+   job-match-specific version of these three; anything else that needs to say
+   good / worth a look / wrong uses them by name. */
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger  { color: var(--danger); }
 .mono { font-family: var(--mono); }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

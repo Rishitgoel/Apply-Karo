@@ -77,9 +77,12 @@
 <div id="out">Running…</div>
 
 <script type="module">
-import { scan } from "../src/engine/scan.js";
-import { pickResumeTargets } from "../src/shared/rules.js";
-import { fillFile } from "../src/engine/fill.js";
+// Cache-busted on purpose — see the note in harness.html. A green result from a
+// stale module is a pass for code that is not the code you just wrote.
+const v = `?v=${Date.now()}`;
+const { scan } = await import(`../src/engine/scan.js${v}`);
+const { pickResumeTargets } = await import(`../src/shared/rules.js${v}`);
+const { fillFile } = await import(`../src/engine/fill.js${v}`);
 
 const lines = [];
 let pass = 0, fail = 0;

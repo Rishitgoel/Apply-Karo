@@ -4,7 +4,9 @@
 // the storage migration. Content scripts ask for work by message and never see
 // credentials.
 
-import { migrateFromV1, loadContext, loadResumeFile, save } from "./src/shared/schema.js";
+import {
+  migrateFromV1, loadContext, loadResumeFile, save, resumeTextIsCurrent
+} from "./src/shared/schema.js";
 // Everything is imported statically: dynamic import() is disallowed inside a
 // ServiceWorkerGlobalScope (w3c/ServiceWorker#1356), so a lazy import here fails
 // at call time rather than at load time.
@@ -32,28 +34,170 @@ let resumeTextPromise = null;
 
 async function ensureResumeText(settings) {
   const { resumeMeta } = await loadContext();
-  if (resumeMeta.text?.trim()) return resumeMeta.text;
-  if (!canReadPdf(settings)) return "";
-  if (!resolveProvider(settings).apiKey) return "";
+
+  // Not merely "is there text" — is it text about the resume that is stored
+  // *now*. Replacing your resume used to leave the previous one's text in place,
+  // and this returned it happily, so every AI answer and every job match went on
+  // describing the resume you had just swapped out. Nothing on screen said so.
+  if (resumeTextIsCurrent(resumeMeta)) return resumeMeta.text;
+
+  if (!canReadPdf(settings)) return resumeMeta.text || "";   // stale beats nothing
+  if (!resolveProvider(settings).apiKey) return resumeMeta.text || "";
 
   // Collapse concurrent callers onto one parse — a fill can ask several times.
   if (!resumeTextPromise) {
     resumeTextPromise = (async () => {
       const dataUrl = await loadResumeFile();
-      if (!dataUrl) return "";
+      if (!dataUrl) return resumeMeta.text || "";
       const text = await parseResumePdf(settings, dataUrl);
-      if (text?.trim()) await save({ resumeMeta: { ...resumeMeta, text } });
-      return text || "";
+      if (text?.trim()) {
+        await save({ resumeMeta: { ...resumeMeta, text, textFileName: resumeMeta.fileName || "" } });
+        return text;
+      }
+      return resumeMeta.text || "";
     })().catch((err) => {
       console.warn("Apply karo: could not parse the resume —", err.message);
-      return "";
+      return resumeMeta.text || "";
     }).finally(() => { resumeTextPromise = null; });
   }
   return resumeTextPromise;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Whole-tab actions
+//
+// `chrome.tabs.sendMessage` delivers to every frame in a tab but returns only
+// ONE reply — the first frame to call sendResponse wins and the rest are
+// discarded. That is the wrong shape for this extension, because the frame
+// holding the application is very often not the frame the popup is looking at:
+// Greenhouse, Lever and Workable all embed their board into a company careers
+// page, so the top frame has no fields and the iframe has all of them.
+//
+// The result was that the popup either reported the top frame's zero, or — when
+// the top frame had no engine at all and so nobody answered — got a closed port
+// and told the user "Chrome blocks extensions here", while the iframe had in
+// fact just filled twenty fields.
+//
+// So the reply does not travel back down the broadcast channel. Every frame that
+// picks up the work acknowledges, does it, and reports the outcome as a fresh
+// message; this collects the acknowledgements to learn how many frames to expect
+// and resolves once they have all reported. Page script cannot reach any of it,
+// which a window.postMessage relay between frames could not have promised — and
+// a fill spends the user's real name, address and phone number, so "the page
+// cannot ask for one" is a property worth keeping.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** How long to wait for frames to put their hands up. */
+const FRAME_ACK_MS = 500;
+
+/** Ceiling on one whole-tab action. An AI-assisted fill is genuinely slow. */
+const FRAME_RESULT_MS = 120000;
+
+let nextRunId = 1;
+const runs = new Map();
+
+function fanOut(tabId, action, extra = {}) {
+  return new Promise((resolve) => {
+    const runId = `r${nextRunId++}`;
+    const run = { acks: new Set(), results: [], ackWindowClosed: false, done: false };
+    runs.set(runId, run);
+
+    run.finish = () => {
+      if (run.done) return;
+      run.done = true;
+      clearTimeout(run.ackTimer);
+      clearTimeout(run.hardTimer);
+      runs.delete(runId);
+      resolve(run.results);
+    };
+
+    // The reply channel is deliberately unused; results arrive as new messages.
+    chrome.tabs.sendMessage(tabId, { type: action, runId, ...extra }).catch(() => {});
+
+    run.ackTimer = setTimeout(() => {
+      run.ackWindowClosed = true;
+      // No acknowledgement from anywhere means no engine is loaded in this tab.
+      if (!run.acks.size || run.results.length >= run.acks.size) run.finish();
+    }, FRAME_ACK_MS);
+
+    run.hardTimer = setTimeout(run.finish, FRAME_RESULT_MS);
+  });
+}
+
+/**
+ * Fold per-frame results into one.
+ *
+ * Numbers add, booleans OR, arrays concatenate. Two keys are taken from the top
+ * frame instead: `host` and `disabled` describe the page as a whole, and OR-ing
+ * `disabled` across frames would report the extension as switched off here
+ * because some embedded third-party iframe happened to be on a blocked host.
+ */
+function mergeFrames(results) {
+  const out = {};
+  const top = results.find((r) => r?.isTop);
+
+  for (const r of results) {
+    for (const [k, v] of Object.entries(r || {})) {
+      if (k === "isTop" || k === "host" || k === "disabled") continue;
+      if (typeof v === "number") out[k] = (out[k] || 0) + v;
+      else if (typeof v === "boolean") out[k] = !!out[k] || v;
+      else if (Array.isArray(v)) out[k] = [...(out[k] || []), ...v];
+      else if (out[k] === undefined) out[k] = v;
+    }
+  }
+
+  if (top) {
+    if (top.host !== undefined) out.host = top.host;
+    if (top.disabled !== undefined) out.disabled = top.disabled;
+  }
+  return out;
+}
+
 /** Route a message to a handler, keeping the async channel open correctly. */
 const handlers = {
+  /** A frame has picked up a whole-tab action and intends to report back. */
+  async rf_frame_ack({ runId }, sender) {
+    const run = runs.get(runId);
+    if (run) run.acks.add(sender?.frameId ?? 0);
+    return { ok: true };
+  },
+
+  /** A frame has finished. Resolve the run once every acked frame is in. */
+  async rf_frame_result({ runId, result }) {
+    const run = runs.get(runId);
+    if (!run) return { ok: true };                 // arrived after the timeout
+    run.results.push(result || {});
+    if (run.ackWindowClosed && run.results.length >= run.acks.size) run.finish();
+    return { ok: true };
+  },
+
+  /**
+   * Run one action across every frame of a tab and return the total.
+   *
+   * `tabId` comes from the popup, which knows it; a content script (the on-page
+   * panel) omits it and is identified by its sender instead.
+   */
+  async tab_action({ action, tabId, ...rest }, sender) {
+    const id = tabId ?? sender?.tab?.id;
+    if (id === undefined) return { ok: false, error: "No tab to act on." };
+
+    const results = await fanOut(id, action, rest);
+    const merged = mergeFrames(results);
+
+    // Hand the tab-wide total to the top frame so the tracker can record it.
+    // `recordApplication` keeps one row per URL and takes the larger `filled`,
+    // so this settling on top of a frame's own smaller count is harmless.
+    if (action === "rf_fill" && merged.filled > 0) {
+      chrome.tabs.sendMessage(id, {
+        type: "rf_log_fill", filled: merged.filled, total: merged.total || 0
+      }).catch(() => {});
+    }
+
+    // `frames` is what tells the caller apart from a tab with no engine in it,
+    // which is a retryable state rather than a failure.
+    return { ok: true, frames: results.length, ...merged };
+  },
+
   async open_options() {
     chrome.runtime.openOptionsPage();
     return { ok: true };
@@ -183,30 +327,23 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
   if (!target?.id) return;
 
-  // A rejection means nothing is listening in that tab at all — a chrome://
-  // page, the Web Store, the PDF viewer. That is a different failure from the
-  // engine being absent but detect.js being present, and only the first is
-  // hopeless, so they are kept apart. `rf_force_load` never sends a response,
-  // so a resolved `undefined` says the sentinel heard us and must not be read
-  // as silence.
+  // A frame count of zero means no engine is loaded anywhere in the tab. That is
+  // recoverable — detection is deliberately conservative, and pressing the
+  // shortcut is an unambiguous instruction — so force the engine in and retry.
+  // A rejected `rf_force_load` is the other case: nothing is listening at all,
+  // on a chrome:// page, the Web Store or the PDF viewer, and that is hopeless.
+  const filled = await fanOut(target.id, "rf_fill");
+  if (filled.length) return;
+
   let reachable = true;
-  const send = (message) => chrome.tabs.sendMessage(target.id, message).catch(() => {
-    reachable = false;
-    return null;
-  });
-
-  // Same shape as the popup's retry: detection is conservative, so ask first,
-  // and only force the engine in when nothing answered. The engine arrives by
-  // dynamic import, so give it a few beats to land rather than calling it dead
-  // on one miss.
-  if (await send({ type: "rf_fill" })) return;
-
-  reachable = true;
-  await send({ type: "rf_force_load" });
+  await chrome.tabs.sendMessage(target.id, { type: "rf_force_load" })
+    .catch(() => { reachable = false; });
   if (!reachable) return;
 
+  // The engine arrives by dynamic import, so give it a few beats to land rather
+  // than calling it dead on one miss.
   for (let i = 0; i < 6; i++) {
     await new Promise((r) => setTimeout(r, 250));
-    if (await send({ type: "rf_fill" })) return;
+    if ((await fanOut(target.id, "rf_fill")).length) return;
   }
 });

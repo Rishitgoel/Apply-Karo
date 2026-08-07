@@ -11,7 +11,16 @@ const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 // Gemini model names are versioned and get retired, so a failed one falls back
 // down this chain. Groq has no equivalent: the model there is whatever the user
 // typed, and quietly answering with a different one would be worse than saying so.
-const GEMINI_FALLBACKS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+//
+// This chain is also the safety net under the default. v1 shipped a default of
+// `gemini-3.5-flash` that was never generally available, and every AI feature
+// failed on a fresh install until the user went and changed it by hand; the
+// migration in schema.js still exists to clean that up. Newest first, so a
+// retired default degrades to a working model rather than to an error.
+const GEMINI_FALLBACKS = [
+  "gemini-3.5-flash-lite", "gemini-3.5-flash",
+  "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"
+];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -25,12 +34,17 @@ export const PROVIDERS = {
     keyPlaceholder: "AIza…",
     keyUrl: "https://aistudio.google.com/apikey",
     readsPdf: true,
+    // First entry is what `resolveProvider` falls back to when no model is
+    // stored, so it must stay equal to DEFAULT_SETTINGS.geminiModel in
+    // schema.js. Those two drifting apart means a fresh install and a
+    // half-configured one quietly use different models.
     models: [
-      "gemini-2.0-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.5-flash",
       "gemini-2.5-flash",
       "gemini-2.5-pro",
-      "gemini-1.5-flash",
-      "gemini-1.5-pro"
+      "gemini-2.0-flash",
+      "gemini-1.5-flash"
     ]
   },
   groq: {

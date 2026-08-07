@@ -20,8 +20,14 @@
 // would otherwise read as agreement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NO_RE = /^(no\b|n\b|false|nope|i am not|i'm not|i do not|i don'?t|i have not|i haven'?t|i will not|not\b|never|decline|neither)/i;
-const YES_RE = /^(yes\b|y\b|true|yep|yeah|i am\b|i'm\b|i do\b|i have\b|i will\b|i can\b|authoriz|eligible|legally)/i;
+const NO_RE = /^(no\b|n\b|false|nope|i am not|i'm not|i do not|i don'?t|i have not|i haven'?t|i will not|i disagree|i decline|not\b|never|decline|disagree|neither|unchecked)/i;
+
+// Agreement phrasings belong here, not just in the option matcher. A required
+// "I certify the information above is accurate" checkbox is answered with the
+// word "agree" or "accept" far more often than with "yes", and every one of
+// those used to read as *unrecognised* — which meant the box was left unticked
+// and the form was rejected on submit for a reason nothing on screen explained.
+const YES_RE = /^(yes\b|y\b|true|yep|yeah|ok\b|okay\b|i am\b|i'm\b|i do\b|i have\b|i will\b|i can\b|i agree|i accept|i consent|i certify|i acknowledg|i confirm|i understand|i authoriz|agree|accept|consent|certif|acknowledg|confirm|authoriz|eligible|legally|checked)/i;
 
 export function asBool(text) {
   const t = String(text || "").trim();

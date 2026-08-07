@@ -14,48 +14,124 @@
   window.__applyKaroSeen = true;
 
   // Hosts where a form is an application by definition.
-  const ATS_HOST = /(^|\.)(greenhouse\.io|lever\.co|myworkdayjobs\.com|myworkdaysite\.com|ashbyhq\.com|workable\.com|smartrecruiters\.com|icims\.com|taleo\.net|jobvite\.com|breezy\.hr|recruitee\.com|bamboohr\.com|teamtailor\.com|personio\.(com|de)|join\.com|pinpointhq\.com|dover\.com|wellfound\.com|jobs\.ashbyhq\.com|applytojob\.com|jazz\.co|hire\.withgoogle\.com|eightfold\.ai|phenompeople\.com|avature\.net|successfactors\.com|oraclecloud\.com)$/i;
+  //
+  // Entries are matched against the *whole* hostname with a `$` anchor and an
+  // optional leading dot, so `greenhouse.io` covers `job-boards.greenhouse.io`
+  // and `boards.eu.greenhouse.io` without listing either.
+  //
+  // A host only belongs here when a form on it is an application *and nothing
+  // else*. That is why `indeed.com` is not in the list but `smartapply.indeed.com`
+  // is: Indeed's search page has two fillable boxes ("what" and "where") and a
+  // host-level entry would auto-fill a job search with someone's name.
+  const ATS_HOST = new RegExp("(^|\\.)(" + [
+    // The big five
+    "greenhouse\\.io", "lever\\.co", "myworkdayjobs\\.com", "myworkdaysite\\.com",
+    "ashbyhq\\.com",
+    // Mid-market SaaS boards
+    "workable\\.com", "smartrecruiters\\.com", "icims\\.com", "taleo\\.net",
+    "jobvite\\.com", "breezy\\.hr", "recruitee\\.com", "bamboohr\\.com",
+    "teamtailor\\.com", "personio\\.(com|de)", "join\\.com", "pinpointhq\\.com",
+    "dover\\.com", "wellfound\\.com", "applytojob\\.com", "jazz\\.co",
+    "hire\\.withgoogle\\.com", "eightfold\\.ai", "phenompeople\\.com",
+    "avature\\.net", "jobscore\\.com", "clearcompany\\.com", "applicantpro\\.com",
+    "trakstar\\.com", "rippling-ats\\.com", "manatal\\.com", "talentlyft\\.com",
+    "factorialhr\\.com", "heyjobs\\.co", "polymer\\.co", "workwithus\\.io",
+    // Enterprise HCM suites. These are where the long, multi-step, badly
+    // labelled applications live, and none of them were reached before.
+    "successfactors\\.(com|eu)", "sapsf\\.(com|eu)", "oraclecloud\\.com",
+    "csod\\.com", "brassring\\.com", "dayforcehcm\\.com", "ultipro\\.com",
+    "ukg\\.net", "recruiting\\.paylocity\\.com", "paycomonline\\.net",
+    "workforcenow\\.adp\\.com", "myjobs\\.adp\\.com",
+    "silkroad\\.com", "jobdiva\\.com", "peoplefluent\\.com",
+    // India / APAC volume boards
+    "zohorecruit\\.(com|in|eu)", "freshteam\\.com", "darwinbox\\.(com|in)",
+    "instahyre\\.com", "cutshort\\.io", "hirist\\.(com|tech)",
+    // LatAm / EU
+    "gupy\\.io", "kenoby\\.com", "solides\\.com\\.br", "softgarden\\.io",
+    // Indeed's apply flow only — never indeed.com itself, see above.
+    "smartapply\\.indeed\\.com", "apply\\.indeed\\.com"
+  ].join("|") + ")$", "i");
 
   // General-purpose form builders. Employers routinely run applications through
   // these, and their URLs carry no job-related words at all — a Google Form is
   // just /forms/d/e/<id>/viewform — so the URL heuristic can never catch them.
-  const GENERIC_FORM_HOST = /(^|\.)(docs\.google\.com|forms\.gle|typeform\.com|jotform\.com|airtable\.com|tally\.so|fillout\.com|formstack\.com|wufoo\.com|surveymonkey\.com|zohopublic\.com|smartsheet\.com|notion\.so)$/i;
+  const GENERIC_FORM_HOST = /(^|\.)(docs\.google\.com|forms\.gle|typeform\.com|jotform\.com|airtable\.com|tally\.so|fillout\.com|formstack\.com|wufoo\.com|surveymonkey\.com|zohopublic\.com|smartsheet\.com|notion\.so|paperform\.co|cognitoforms\.com|forms\.office\.com|forms\.microsoft\.com|forms\.app|zeffy\.com)$/i;
 
-  const URL_HINT = /\/(apply|application|applications|job|jobs|career|careers|vacanc|opening|position|recruit|candidate)(\/|$|\?)|gh_jid|lever-|\bjobId=|\/forms\/|\/viewform/i;
+  const URL_HINT = /\/(apply|application|applications|job|jobs|career|careers|vacanc|opening|position|positions|recruit|recruitment|recruiting|candidate|candidateportal|posting|postings|requisition|internship|hiring|talent|joinus|join-us|work-with-us|prescreen|gethired|indeedapply)(\/|$|\?)|gh_jid|lever-|\bjobId=|\breq(uisition)?[Ii]d=|\/forms?\/|\/viewform|\/viewjob|smartapply/i;
 
-  const TEXT_HINT = /\b(resume|cv|cover letter|work authorization|apply for|application form|first name)\b/i;
+  const TEXT_HINT = /\b(resume|résumé|cv|cover letter|work authorization|work authorisation|apply for|application form|first name|legal name|desired salary|notice period|why do you want to work)\b/i;
+
+  // The same words, in the hostname rather than the path. A company's own board
+  // is almost always at careers.acme.com or jobs.acme.com, and its landing path
+  // is just "/" — so a path-only test gated out the entire self-hosted category,
+  // which is where a great many applications actually live.
+  const HOST_HINT = /(^|[.-])(careers?|jobs?|apply|applicants?|recruit(ing|ment)?|hiring|talent|joinus|workfor|worka?t)([.-])/i;
 
   const hostIsATS = ATS_HOST.test(location.hostname);
-  const urlHints = URL_HINT.test(location.pathname + location.search);
+  const urlHints = URL_HINT.test(location.pathname + location.search) ||
+                   HOST_HINT.test(location.hostname);
 
   let probes = 0;
   let observer = null;
 
-  /** Cheap structural probe — no computed styles, no layout reads. */
-  function looksLikeApplication() {
-    const inputs = document.querySelectorAll("input,select,textarea");
+  const ARIA_CONTROL =
+    '[role="textbox"],[role="radiogroup"],[role="listbox"],[role="combobox"],[role="switch"]';
 
-    let fillable = 0;
-    let hasFile = false;
-    let hasPassword = false;
+  /**
+   * Count fillable controls under one root. Kept separate from the caller so the
+   * same accounting can be run again inside shadow roots.
+   */
+  function countIn(root, tally) {
+    let inputs;
+    try { inputs = root.querySelectorAll("input,select,textarea"); } catch { return; }
 
     for (let i = 0; i < inputs.length; i++) {
       const el = inputs[i];
       const t = (el.type || "text").toLowerCase();
       if (t === "hidden" || t === "submit" || t === "button" || t === "reset") continue;
       if (el.disabled) continue;
-      if (t === "password") { hasPassword = true; continue; }
-      if (t === "file") hasFile = true;
-      fillable++;
+      if (t === "password") { tally.hasPassword = true; continue; }
+      if (t === "file") tally.hasFile = true;
+      tally.fillable++;
     }
 
     // Form builders render most controls as ARIA widgets rather than real
     // inputs, so a native-only count reports an empty page on exactly the forms
     // that need help most.
-    fillable += document.querySelectorAll(
-      '[role="textbox"],[role="radiogroup"],[role="listbox"],[role="combobox"]'
-    ).length;
+    try { tally.fillable += root.querySelectorAll(ARIA_CONTROL).length; } catch { /* ignore */ }
+  }
 
+  /**
+   * The same count again, this time inside open shadow roots.
+   *
+   * `querySelectorAll` does not cross a shadow boundary, so a form built out of
+   * custom elements — Oracle, SAP and several design systems ship them — looks
+   * like an empty page to the probe above, and the engine that *does* understand
+   * shadow DOM never gets loaded to find out otherwise.
+   *
+   * This materialises every element in the document, which is the expensive thing
+   * this file exists to avoid, so it is a last resort: only on a page that already
+   * passed the host/URL gate, and only when the light DOM came back near-empty.
+   */
+  function countInShadows(tally) {
+    let all;
+    try { all = document.querySelectorAll("*"); } catch { return; }
+    if (all.length > 8000) return;                // pathological page, not worth it
+
+    const roots = [];
+    for (let i = 0; i < all.length && roots.length < 60; i++) {
+      if (all[i].shadowRoot) roots.push(all[i].shadowRoot);
+    }
+    for (const r of roots) countIn(r, tally);
+  }
+
+  /** Cheap structural probe — no computed styles, no layout reads. */
+  function looksLikeApplication() {
+    const tally = { fillable: 0, hasFile: false, hasPassword: false };
+    countIn(document, tally);
+    if (tally.fillable < 2) countInShadows(tally);
+
+    const { fillable, hasFile, hasPassword } = tally;
     if (fillable < 2) return false;
 
     // Sign-in and sign-up forms are the main false positive; they are small and
@@ -65,8 +141,12 @@
     if (hostIsATS && fillable >= 2) return true;
     if (hasFile && fillable >= 2) return true;
 
-    // textContent, not innerText — innerText forces a reflow.
-    const text = document.body?.textContent?.slice(0, 6000) || "";
+    // textContent, not innerText — innerText forces a reflow. The slice bounds
+    // the regex, not the read: `textContent` has already built the whole string
+    // by the time we get here, so a larger window is free. 6 000 characters was
+    // not enough on a heavy board — LinkedIn and Workday spend that much on
+    // chrome before the form's own words start.
+    const text = document.body?.textContent?.slice(0, 40000) || "";
 
     // On a general form builder, only auto-fill when the page reads as a job
     // application. A Google Form is just as likely to be a lunch order, and
@@ -80,13 +160,48 @@
   function start() {
     observer?.disconnect();
     observer = null;
+    // Written as one expression on purpose: `import()` here is the real thing,
+    // and the test harness rewrites this exact call shape to reach it.
     import(chrome.runtime.getURL("src/engine/index.js"))
       .then((m) => m.boot())
-      .catch((err) => console.warn("Apply karo: engine failed to load —", err));
+      // console.error, not warn: this is the one failure that makes every
+      // button in the popup report "Couldn't reach the page", and a warning
+      // nobody looks at is why that reads as an unexplained dead page rather
+      // than a load error with a cause attached to it.
+      .catch((err) => console.error(
+        "Apply karo: engine failed to load —", err,
+        "\n  url:", chrome.runtime.getURL("src/engine/index.js")));
+  }
+
+  /**
+   * Is the application on this page actually inside an iframe?
+   *
+   * Greenhouse, Lever, Workable and SmartRecruiters all offer an embed, and
+   * employers use it constantly: the careers page is theirs and the form is a
+   * third-party frame inside it. The frame passes detection on its own and fills
+   * correctly — but the panel only mounts in the top frame, and the top frame
+   * has no fields, so it saw an ordinary page and loaded nothing. The result was
+   * a form that filled from the toolbar and had no on-page button at all.
+   *
+   * Only the top frame asks this, and only after its own probe found nothing.
+   */
+  function hasEmbeddedApplication() {
+    if (window !== window.top) return false;
+    let frames;
+    try { frames = document.querySelectorAll("iframe[src]"); } catch { return false; }
+    for (let i = 0; i < frames.length && i < 30; i++) {
+      let host;
+      try { host = new URL(frames[i].src, location.href).hostname; } catch { continue; }
+      if (ATS_HOST.test(host)) return true;
+    }
+    return false;
   }
 
   function probe() {
     if (looksLikeApplication()) { start(); return true; }
+    // Nothing to fill here, but something below us has plenty. Load the engine
+    // so the panel exists; the fill itself is coordinated across frames.
+    if (hasEmbeddedApplication()) { start(); return true; }
     return false;
   }
 
@@ -109,16 +224,62 @@
 
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 150));
 
+  /**
+   * Does this mutation batch plausibly change the answer?
+   *
+   * The old budget was 30 mutation *batches*, spent regardless of what was in
+   * them. A React board burns that inside its first second of hydration — long
+   * before the application form itself renders — so the watcher was routinely
+   * exhausted and disconnected on exactly the single-page boards it was added
+   * for. Counting only batches that brought in controls (or a shadow host, or a
+   * route change) makes the budget mean what it says.
+   */
+  function worthProbing(records) {
+    for (const r of records) {
+      const added = r.addedNodes;
+      for (let i = 0; i < added.length; i++) {
+        const n = added[i];
+        if (n.nodeType !== 1) continue;
+        if (n.shadowRoot) return true;
+        const tag = n.tagName;
+        if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "FORM") return true;
+        if (n.querySelector?.("input,select,textarea," + ARIA_CONTROL)) return true;
+      }
+    }
+    return false;
+  }
+
   idle(() => {
     if (probe()) return;
 
-    // Single-page job boards (and form builders that render late) fill in
-    // their fields after routing. Watch briefly, then give up.
-    observer = new MutationObserver(() => {
-      if (++probes > 30) { observer.disconnect(); observer = null; return; }
+    // Single-page job boards (and form builders that render late) fill in their
+    // fields after routing. Watch briefly, then give up.
+    let deadline = Date.now() + 25000;
+    let seenUrl = location.href;
+
+    const stop = () => { observer?.disconnect(); observer = null; };
+
+    observer = new MutationObserver((records) => {
+      // A client-side route change is the other thing that makes this page a
+      // different page. History is not patchable from an isolated world, so the
+      // URL is compared here instead — and a new route resets the budget,
+      // because browsing a board and then opening a posting is one of the most
+      // ordinary ways to arrive at an application.
+      if (location.href !== seenUrl) {
+        seenUrl = location.href;
+        probes = 0;
+        deadline = Date.now() + 25000;
+      } else if (!worthProbing(records)) {
+        return;
+      }
+
+      if (Date.now() > deadline || ++probes > 40) { stop(); return; }
       probe();
     });
     observer.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => { observer?.disconnect(); observer = null; }, 20000);
+
+    // A hard outer cap, so a page that never stops mutating cannot keep this
+    // alive forever.
+    setTimeout(stop, 120000);
   }, { timeout: 1500 });
 })();

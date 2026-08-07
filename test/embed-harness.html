@@ -1,0 +1,131 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Apply karo — embedded board harness</title>
+<!--
+  A company careers page with the application in a third-party iframe, which is
+  what Greenhouse, Lever, Workable and SmartRecruiters all ship an embed for and
+  what employers use constantly.
+
+  The top frame has no fields. Before the whole-tab coordination it therefore
+  loaded no engine, so no panel appeared; and the popup, broadcasting to every
+  frame but keeping only the first reply, got either the top frame's zero or a
+  closed port — and told the user "Chrome blocks extensions here" while the
+  iframe had just filled the form.
+
+  Serve the project root and open /test/embed-harness.html. The iframe is
+  same-origin here, so the checks can read into it; the real thing is
+  cross-origin, which is exactly why the coordination goes through the service
+  worker rather than through the DOM.
+-->
+<style>
+  body{font:14px/1.5 system-ui,sans-serif;margin:0;display:grid;grid-template-columns:1fr 1fr;height:100vh}
+  #stage{padding:18px;overflow:auto;border-right:1px solid #ddd}
+  #out{padding:18px;overflow:auto;background:#0f172a;color:#e2e8f0;font:12px/1.6 ui-monospace,monospace}
+  .ok{color:#4ade80}.no{color:#f87171}.dim{color:#64748b}
+  h2{margin:16px 0 6px;font-size:12px;color:#93c5fd;text-transform:uppercase;letter-spacing:.05em}
+  iframe{width:100%;height:340px;border:1px solid #ccc;border-radius:6px}
+  .hero{padding:14px;background:#f4f4f5;border-radius:6px;margin-bottom:12px}
+</style>
+
+<div id="stage">
+  <!-- The employer's own page. Marketing copy, a search box, and no form. -->
+  <div class="hero">
+    <h1 style="margin:0 0 4px;font-size:18px">Careers at Acme</h1>
+    <p style="margin:0;color:#555">Senior Platform Engineer · Remote</p>
+    <input type="search" placeholder="Search roles" aria-label="Search roles">
+  </div>
+
+  <!-- The application itself, from the board. -->
+  <iframe id="board" src="embed-frame.html" title="Application form"></iframe>
+</div>
+<div id="out">Running…</div>
+
+<script type="module">
+const v = `?v=${Date.now()}`;
+const { scan } = await import(`../src/engine/scan.js${v}`);
+
+const lines = [];
+let pass = 0, fail = 0;
+const check = (desc, got, want) => {
+  const g = JSON.stringify(got), w = JSON.stringify(want);
+  const ok = g === w;
+  ok ? pass++ : fail++;
+  lines.push(`<div class="${ok ? "ok" : "no"}">${ok ? "PASS" : "FAIL"}  ${desc}` +
+    (ok ? "" : `<div class="dim">      expected ${w}, got ${g}</div>`) + `</div>`);
+};
+const h2 = (t) => lines.push(`<h2>${t}</h2>`);
+
+const frame = document.getElementById("board");
+await new Promise((r) => (frame.contentDocument?.readyState === "complete" ? r() : frame.addEventListener("load", r)));
+
+// ─── The shape of the problem ────────────────────────────────────────────────
+h2("The page the popup is looking at");
+
+const topFields = scan();
+check("the top frame has no application fields of its own",
+  topFields.filter((f) => f.kind !== "text" || f.type !== "search").length, 0);
+check("…so anything that only asks the top frame reports nothing", topFields.length <= 1, true);
+
+// ─── Detection has to notice the embed ───────────────────────────────────────
+h2("Detection");
+
+// This is the check detect.js runs when its own probe finds nothing: is there an
+// iframe from a host where a form is an application by definition? Without it
+// the top frame loads no engine, and the panel — which only ever mounts in the
+// top frame — never appears on an embedded board at all.
+const SRC = await (await fetch(`../src/detect.js${v}`)).text();
+const ATS_HOST = new Function(`return ${SRC.match(/const ATS_HOST = (new RegExp\([\s\S]*?"i"\));/)[1]}`)();
+
+check("detect.js looks for an embedded application",
+  /function hasEmbeddedApplication\(\)/.test(SRC), true);
+check("…and only from the top frame", /window !== window\.top/.test(SRC), true);
+
+for (const host of ["boards.greenhouse.io", "jobs.lever.co", "apply.workable.com",
+                    "jobs.smartrecruiters.com", "acme.wd1.myworkdayjobs.com"]) {
+  check(`an iframe from ${host} counts as an embedded board`, ATS_HOST.test(host), true);
+}
+check("an ordinary third-party iframe does not",
+  ATS_HOST.test("www.youtube.com") || ATS_HOST.test("platform.twitter.com"), false);
+
+// ─── The form really is in there ─────────────────────────────────────────────
+h2("The frame that holds the application");
+
+const inner = frame.contentWindow;
+const innerFields = inner.__scan();
+const byName = (n) => innerFields.find((f) => f.name === n);
+
+check("the iframe scans a full application", innerFields.length >= 5, true);
+check("first name is found", !!byName("job_application[first_name]"), true);
+check("the resume upload is found", innerFields.some((f) => f.kind === "file"), true);
+check("the work-authorization question is found",
+  innerFields.some((f) => f.kind === "radiogroup" && /authorized/i.test(f.rawLabel)), true);
+
+// ─── Adding up across frames ─────────────────────────────────────────────────
+h2("What the popup must end up reporting");
+
+// mergeFrames, lifted from the service worker, against what these two frames
+// would actually report.
+const BG = await (await fetch(`../background.js${v}`)).text();
+const start = BG.indexOf("function mergeFrames(");
+const body = (() => {
+  let depth = 0;
+  for (let j = BG.indexOf("{", BG.indexOf(")", start)); j < BG.length; j++) {
+    if (BG[j] === "{") depth++;
+    else if (BG[j] === "}" && --depth === 0) return BG.slice(start, j + 1);
+  }
+})();
+const mergeFrames = new Function(`${body}; return mergeFrames;`)();
+
+const merged = mergeFrames([
+  { ok: true, isTop: true, host: "localhost", disabled: false, filled: 0, total: 1 },
+  { ok: true, isTop: false, host: "localhost", disabled: false, filled: innerFields.length, total: innerFields.length }
+]);
+check("the tab's count is the iframe's, not the top frame's zero",
+  merged.filled, innerFields.length);
+check("the reported host is the employer's page, not the board's", merged.host, "localhost");
+check("one frame reporting is enough for the tab to count as filled", merged.filled > 0, true);
+
+document.getElementById("out").innerHTML =
+  `<div style="font-size:14px;margin-bottom:10px">${pass}/${pass + fail} passed</div>` + lines.join("");
+document.title = fail ? `FAIL (${fail})` : `PASS (${pass})`;
+</script>

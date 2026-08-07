@@ -968,10 +968,26 @@ async function ensurePanel() {
   if (panel || !IS_TOP || siteDisabled || ctx?.settings.panelEnabled === false) return panel;
   const mod = await import(chrome.runtime.getURL("src/engine/panel.js"));
   panel = mod.mount({
-    onFill: (onStage) => run({ manual: true, useAI: true, onStage }),
-    onFillSteps: () => runSteps(),
-    onUndo: () => undoFill(),
-    onHighlight: () => highlightEmpty(),
+    // The panel sits in the top frame, but on an embedded board — Greenhouse and
+    // Lever inside a company careers page — the form it is offering to fill is
+    // in a subframe. Every one of these covers the whole tab for that reason.
+    onFill: (onStage) => fillWholeTab(onStage),
+    onFillSteps: async () => {
+      const mine = await runSteps();
+      const rest = await inOtherFrames("rf_steps");
+      return {
+        ...mine,
+        filled: mine.filled + (rest.filled || 0),
+        steps: mine.steps + (rest.steps || 0),
+        trail: [...mine.trail, ...(rest.trail || [])]
+      };
+    },
+    onUndo: async () => undoFill() + ((await inOtherFrames("rf_undo")).restored || 0),
+    onHighlight: async () => {
+      const mine = highlightEmpty();
+      const rest = await inOtherFrames("rf_highlight");
+      return { count: mine.count + (rest.empty || 0), required: mine.required + (rest.required || 0) };
+    },
     onCoverLetter: (onStage) => writeCoverLetter(onStage),
     onMatch: (onStage) => matchThisJob(onStage, { force: true }),
     onPriorApplications: () => priorApplications(),
@@ -1011,7 +1027,57 @@ async function ensurePanel() {
 // Boot
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Whole-tab actions, from this frame's side
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Take part in a coordinated run, or stand down.
+ *
+ * `skipTop` is how the on-page panel avoids doing its own frame twice: it fills
+ * locally first so it can show progress as it goes, then asks for the rest of
+ * the tab. Returns false when this frame should ignore the message entirely.
+ */
+function claim(msg) {
+  if (msg.skipTop && IS_TOP) return false;
+  if (msg.runId) chrome.runtime.sendMessage({ type: "rf_frame_ack", runId: msg.runId }).catch(() => {});
+  return true;
+}
+
+/** Hand this frame's outcome back to the coordinator. */
+function report(runId, result) {
+  if (!runId) return;
+  chrome.runtime
+    .sendMessage({ type: "rf_frame_result", runId, result: { ...result, isTop: IS_TOP } })
+    .catch(() => {});
+}
+
+/** Ask the service worker to run `action` in every OTHER frame of this tab. */
+async function inOtherFrames(action) {
+  const r = await chrome.runtime
+    .sendMessage({ type: "tab_action", action, skipTop: true })
+    .catch(() => null);
+  return r?.ok ? r : {};
+}
+
+/**
+ * Fill this frame, then the rest of the tab.
+ *
+ * The local half runs directly rather than through the coordinator so the panel
+ * can keep reporting stages ("Asking AI about 6 more…") as it goes — a callback
+ * cannot cross a message boundary.
+ */
+async function fillWholeTab(onStage) {
+  const mine = await run({ manual: true, useAI: true, onStage });
+  const rest = await inOtherFrames("rf_fill");
+  return {
+    filled: mine.filled + (rest.filled || 0),
+    total: mine.total + (rest.total || 0)
+  };
+}
+
 let booted = false;
+let listening = false;
 
 /**
  * Resolve once this tab has actually been laid out.
@@ -1043,38 +1109,81 @@ export async function boot() {
   // second message listener, a second observer and a second panel.
   if (booted) return;
   booted = true;
+  try {
+    await bootOnce();
+  } catch (err) {
+    // A boot that threw before it could listen must not latch the flag. It used
+    // to: `booted` was set before the first await, so a rejected loadContext()
+    // meant every later "Fill this page" force-load returned instantly and did
+    // nothing — no listener was ever registered, and the popup reported
+    // "Couldn't reach the page" for the rest of that page's life with no way
+    // back short of a reload. Clearing it makes the retry that popup.js already
+    // performs mean something.
+    //
+    // Only before it could listen, though. A failure further on — the panel
+    // import, the first automatic pass — leaves a frame that answers messages
+    // perfectly well, and un-latching there would stack a second listener,
+    // observer and panel on the next force-load.
+    if (!listening) booted = false;
+    throw err;
+  }
+}
 
+async function bootOnce() {
   ctx = await loadContext();
   siteDisabled = isSiteDisabled(ctx.settings, location.hostname);
 
   // The popup and the panel both talk to the engine through here. Only the top
   // frame answers, so a page with six iframes still produces one reply.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    // A whole-tab action is coordinated by the service worker: this frame says
+    // it is taking part, does the work, then reports separately. Nothing travels
+    // back down `sendResponse`, because only one frame's reply would survive it
+    // — see the note in background.js. Dropping the old `IS_TOP` gate is the
+    // point: on an embedded Greenhouse or Lever board every field lives in a
+    // subframe, and gating on the top frame meant the frame holding the
+    // application was the one frame never allowed to answer.
+    const runId = msg?.runId;
+
     switch (msg?.type) {
       case "rf_fill":
+        if (claim(msg) === false) return false;
         run({ manual: true, useAI: true }).then((r) => {
           panel?.setCount(r.filled);
-          if (IS_TOP) sendResponse({ ok: true, filled: r.filled, total: r.total });
+          report(runId, { ok: true, filled: r.filled, total: r.total });
         });
-        return IS_TOP;
+        return false;
 
       case "rf_steps":
-        runSteps().then((r) => { if (IS_TOP) sendResponse({ ok: true, ...r }); });
-        return IS_TOP;
+        if (claim(msg) === false) return false;
+        runSteps().then((r) => report(runId, { ok: true, ...r }));
+        return false;
 
       case "rf_undo":
-        if (!IS_TOP) return;
-        sendResponse({ ok: true, restored: undoFill() });
+        if (claim(msg) === false) return false;
+        report(runId, { ok: true, restored: undoFill() });
         return false;
 
-      case "rf_highlight":
-        if (!IS_TOP) return;
-        sendResponse({ ok: true, empty: highlightEmpty() });
+      case "rf_highlight": {
+        if (claim(msg) === false) return false;
+        const { count, required } = highlightEmpty();
+        report(runId, { ok: true, empty: count, required });
         return false;
+      }
 
       case "rf_status":
-        if (!IS_TOP) return;
-        sendResponse(pageStatus());
+        if (claim(msg) === false) return false;
+        report(runId, pageStatus());
+        return false;
+
+      // The tab filled `n` fields across all its frames. Only the top frame can
+      // log that: the tracker is keyed by the page you were looking at, and an
+      // embedded board's frame would file the row under greenhouse.io rather
+      // than under the employer whose careers page you were actually on. Without
+      // this, an application filled entirely inside an iframe was never tracked
+      // at all — the frame that did the work is not allowed to name the page.
+      case "rf_log_fill":
+        if (IS_TOP) logApplication(msg.filled, msg.total);
         return false;
 
       case "rf_settings_changed":
@@ -1095,6 +1204,8 @@ export async function boot() {
         return;
     }
   });
+
+  listening = true;
 
   watchEdits();
 
@@ -1120,6 +1231,18 @@ export async function boot() {
 /**
  * Outline everything still empty. Shared by the panel and the popup so both
  * report the same number.
+ *
+ * This runs off `scan()` rather than its own `querySelectorAll`, and that is the
+ * whole point of it. The old loop walked `input,select,textarea` and then
+ * skipped radios, checkboxes and read-only controls outright — so the three
+ * things most likely to be the reason a submit is rejected were the three it
+ * could never show you. An unticked "I certify this is accurate", an unanswered
+ * work-authorization radio group and a required dropdown built as a `<div>` all
+ * reported the form as complete.
+ *
+ * The scanner already knows about every one of those, already knows which are
+ * filled, and already understands shadow roots — so asking it is both more
+ * correct and less code.
  */
 export function highlightEmpty() {
   document.querySelectorAll(".rf-missed").forEach((n) => n.classList.remove("rf-missed"));
@@ -1135,22 +1258,54 @@ export function highlightEmpty() {
     (document.head || document.documentElement).appendChild(style);
   }
 
-  let n = 0;
+  const marked = [];
   let first = null;
-  for (const el of document.querySelectorAll("input,select,textarea")) {
-    const t = (el.type || "").toLowerCase();
-    if (t === "hidden" || t === "submit" || t === "button" || t === "checkbox" || t === "radio") continue;
-    if (el.disabled || el.readOnly || el.closest(OWN_UI)) continue;
-    if (el.value && el.value.trim()) continue;
-    if (!el.offsetParent && !el.getClientRects().length) continue;   // not on screen
-    el.classList.add("rf-missed");
-    first = first || el;
-    n++;
+  let required = 0;
+
+  for (const f of scan()) {
+    if (f.filled) continue;
+    if (f.el?.closest?.(OWN_UI)) continue;
+
+    // A control the page hides behind a styled proxy — a file input, an
+    // opacity:0 radio — cannot carry a visible outline of its own.
+    const target = outlineTarget(f);
+    if (!target || (!target.offsetParent && !target.getClientRects().length)) continue;
+
+    if (isRequired(f)) { required++; first = first || target; }
+    target.classList.add("rf-missed");
+    marked.push(target);
+    first = first || target;
   }
 
   first?.scrollIntoView({ block: "center", behavior: "smooth" });
   setTimeout(() => {
-    document.querySelectorAll(".rf-missed").forEach((el) => el.classList.remove("rf-missed"));
+    for (const el of marked) el.classList.remove("rf-missed");
   }, 6000);
-  return n;
+  return { count: marked.length, required };
+}
+
+/** Does the page itself say this field must be answered? */
+function isRequired(field) {
+  const els = [field.el, ...(field.options || []).map((o) => o.el)].filter(Boolean);
+  for (const el of els) {
+    if (el.required) return true;
+    const aria = el.getAttribute?.("aria-required");
+    if (aria === "true") return true;
+  }
+  return false;
+}
+
+/** The element an outline should actually be drawn on. */
+function outlineTarget(field) {
+  const el = field.el;
+  if (!el) return null;
+  const r = el.getBoundingClientRect?.();
+  if (r && r.width > 1 && r.height > 1) return el;
+  // Zero-size or visually replaced: outline whatever the user can see instead.
+  if (field.kind === "file") return uploadWidget(el);
+  const opt = (field.options || []).map((o) => o.el).find((n) => {
+    const b = n?.getBoundingClientRect?.();
+    return b && b.width > 1 && b.height > 1;
+  });
+  return opt || el.closest("label,fieldset,[role=radiogroup],[role=group]") || el.parentElement || el;
 }
