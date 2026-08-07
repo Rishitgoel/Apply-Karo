@@ -59,6 +59,20 @@ export function realClick(el) {
 }
 
 /**
+ * Is `el` the focused element, aware of shadow boundaries?
+ *
+ * `document.activeElement` stops at the shadow host and never descends into an
+ * open shadow root, so a control focused inside one always read as unfocused
+ * here. `el.getRootNode()` returns that shadow root directly when `el` lives
+ * inside one — and a ShadowRoot exposes its own `activeElement` per spec — so
+ * asking the root `el` actually belongs to covers both cases.
+ */
+function isFocused(el) {
+  const root = el.getRootNode ? el.getRootNode() : document;
+  return (root.activeElement || document.activeElement) === el;
+}
+
+/**
  * Tell the page the user has finished with this control.
  *
  * A large share of application forms do their validation on blur, not on input:
@@ -73,11 +87,18 @@ export function realClick(el) {
  * than the one this fixes. React (17+) binds onBlur to the bubbling `focusout`
  * event and handlers registered directly on the element receive a dispatched
  * `blur`, so both are reached without touching the focus ring.
+ *
+ * `wasFocused` is `isFocused(el)` captured by the caller *before* any of our
+ * own `focus()`/`realClick()` calls could have moved focus onto `el` — reading
+ * `document.activeElement` here instead, after our own fill already focused
+ * the control to write into it, meant this always saw "focused" and never
+ * actually blurred anything it had just filled.
  */
-export function commit(el) {
-  // If the user genuinely is in this control, saying they left it would be a
-  // lie the page acts on — validation fires mid-typing.
-  if (document.activeElement === el) return;
+export function commit(el, wasFocused) {
+  // If the user genuinely had this control focused before we touched it,
+  // saying they left it would be a lie the page acts on — validation fires
+  // mid-typing.
+  if (wasFocused) return;
   try {
     el.dispatchEvent(new FocusEvent("blur", { bubbles: false, composed: true }));
     el.dispatchEvent(new FocusEvent("focusout", { bubbles: true, composed: true }));
@@ -213,19 +234,21 @@ function fallbackOption(options) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function fillText(el, value) {
+  const wasFocused = isFocused(el);
   setValue(el, value);
   fireInput(el);
   fire(el, "change");
-  commit(el);
+  commit(el, wasFocused);
   return true;
 }
 
 function fillContentEditable(el, value) {
+  const wasFocused = isFocused(el);
   el.focus({ preventScroll: true });
   el.textContent = value;
   fireInput(el);
   fire(el, "change");
-  commit(el);
+  commit(el, wasFocused);
   return true;
 }
 
@@ -237,12 +260,13 @@ function fillSelect(el, value, options, ruleId) {
   const pick = bestOption(opts, value, 0.5, ruleId) || fallbackOption(opts);
   if (!pick) return false;
 
+  const wasFocused = isFocused(el);
   setValue(el, pick.value);
   // Some frameworks track selectedIndex rather than value.
   if (el.value !== pick.value && pick.el) pick.el.selected = true;
   fireInput(el);
   fire(el, "change");
-  commit(el);
+  commit(el, wasFocused);
   return true;
 }
 
@@ -296,10 +320,11 @@ function fillSwitch(el, value) {
   if (want === null) return false;
   if (isChecked(el) === want) return false;        // already there; nothing written
 
+  const wasFocused = isFocused(el);
   realClick(el);
   // Some toggles only commit on keyboard activation.
   if (isChecked(el) !== want) key(el, " ", "Space");
-  commit(el);
+  commit(el, wasFocused);
   return isChecked(el) === want;
 }
 
@@ -319,11 +344,12 @@ function fillCheckbox(el, value) {
   // had defaulted that way itself.
   if (el.checked === want) return false;
 
+  const wasFocused = isFocused(el);
   const proxy = el.closest("label");
   if (proxy && proxy !== el) realClick(proxy);
   else { el.checked = want; realClick(el); }
   fire(el, "change");
-  commit(el);
+  commit(el, wasFocused);
   return el.checked === want;
 }
 
@@ -495,10 +521,11 @@ function fillDate(el, value, kind) {
   const hint = el.getAttribute("placeholder") || el.getAttribute("data-format") || "";
   const out = formatDate(parts, kind === "date" ? (el.type === "month" ? "month" : "date") : "text", hint);
 
+  const wasFocused = isFocused(el);
   setValue(el, out);
   fireInput(el);
   fire(el, "change");
-  commit(el);
+  commit(el, wasFocused);
   return !!el.value;
 }
 
@@ -526,10 +553,11 @@ function fillDateGroup(field, value) {
       }
       if (done) any = true;
     } else {
+      const wasFocused = isFocused(el);
       setValue(el, raw);
       fireInput(el);
       fire(el, "change");
-      commit(el);
+      commit(el, wasFocused);
       any = true;
     }
   }

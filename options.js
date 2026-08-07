@@ -662,7 +662,16 @@ deleteResumeBtn.addEventListener("click", async () => {
   })) return;
 
   resumeBase64 = "";
-  state.resumeMeta = { fileName: "", fileSize: "", text: state.resumeMeta.text || "" };
+  state.resumeMeta = {
+    fileName: "", fileSize: "",
+    text: state.resumeMeta.text || "",
+    // Carried through, not dropped: losing it here re-labels PDF-derived text
+    // as hand-typed, which `resumeTextIsCurrent` then treats as permanently
+    // current — the file it names no longer exists, so it can never be equal
+    // to a `fileName` again, and re-uploading anything will correctly ask for
+    // a fresh extraction instead of quietly reusing this text forever.
+    textFileName: state.resumeMeta.textFileName || ""
+  };
   await Promise.all([saveResumeFile(""), save({ resumeMeta: state.resumeMeta })]);
   renderResume();
   renderOverview();

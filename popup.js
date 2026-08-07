@@ -290,13 +290,23 @@ async function withEngine(action, extra = {}) {
   let res = await act(action, extra);
   if (res) return res;
 
-  noReceiver = false;
+  // A miss here does not yet say whether the page is reachable at all: `act()`
+  // only reflects what `tab_action` reported, and a tab with no engine loaded
+  // anywhere still comes back `{ok:true, frames:0}` from the service worker —
+  // the ordinary "not detected as an application" case, not a blocked page —
+  // which is why `act()` resets `noReceiver` to false on exactly that response.
+  // `rf_force_load` is the one message detect.js always listens for on every
+  // http(s) page (see its own comment on why), so its rejection is the actual
+  // "nothing is listening here at all" signal — a chrome:// page, the Web
+  // Store, the PDF viewer. Bail out on that signal before any further `act()`
+  // call gets a chance to relabel the same blocked page as reachable-but-empty.
   await send({ type: "rf_force_load" });
+  if (noReceiver) return null;
+
   // The engine is a dynamic import; give it time to land before asking again,
   // and retry rather than judging it dead on one miss.
   for (let i = 0; i < 6 && !res; i++) {
     await new Promise((r) => setTimeout(r, 250));
-    noReceiver = false;
     res = await act(action, extra);
   }
   return res;

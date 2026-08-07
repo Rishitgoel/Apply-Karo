@@ -111,15 +111,23 @@ function fanOut(tabId, action, extra = {}) {
       resolve(run.results);
     };
 
-    // The reply channel is deliberately unused; results arrive as new messages.
-    chrome.tabs.sendMessage(tabId, { type: action, runId, ...extra }).catch(() => {});
-
-    run.ackTimer = setTimeout(() => {
+    // Closing the window says "no further frame will introduce itself" — that
+    // is re-checked on every fresh ack by resetting this timer (see the
+    // `rf_frame_ack` handler below) rather than leaving the deadline fixed at
+    // the first broadcast. A frame whose main thread was still busy hydrating
+    // when a fixed deadline would have closed the window got counted as never
+    // joining, and its result — arriving after `finish()` had already deleted
+    // the run — was silently dropped despite the frame having filled the form.
+    run.closeAckWindow = () => {
       run.ackWindowClosed = true;
       // No acknowledgement from anywhere means no engine is loaded in this tab.
       if (!run.acks.size || run.results.length >= run.acks.size) run.finish();
-    }, FRAME_ACK_MS);
+    };
 
+    // The reply channel is deliberately unused; results arrive as new messages.
+    chrome.tabs.sendMessage(tabId, { type: action, runId, ...extra }).catch(() => {});
+
+    run.ackTimer = setTimeout(run.closeAckWindow, FRAME_ACK_MS);
     run.hardTimer = setTimeout(run.finish, FRAME_RESULT_MS);
   });
 }
@@ -158,7 +166,17 @@ const handlers = {
   /** A frame has picked up a whole-tab action and intends to report back. */
   async rf_frame_ack({ runId }, sender) {
     const run = runs.get(runId);
-    if (run) run.acks.add(sender?.frameId ?? 0);
+    if (!run) return { ok: true };
+
+    const frameId = sender?.frameId ?? 0;
+    // A genuinely new voice, before the window closed: give it (and anyone
+    // else still hydrating) the same runway rather than cutting it off
+    // mid-count — see the comment on `closeAckWindow` above.
+    if (!run.acks.has(frameId) && !run.ackWindowClosed) {
+      clearTimeout(run.ackTimer);
+      run.ackTimer = setTimeout(run.closeAckWindow, FRAME_ACK_MS);
+    }
+    run.acks.add(frameId);
     return { ok: true };
   },
 
@@ -327,13 +345,18 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
   if (!target?.id) return;
 
+  // Routed through the same `tab_action` handler the popup uses, not `fanOut`
+  // directly — `tab_action` is what fires `rf_log_fill` once a whole-tab fill
+  // lands (see above), and calling `fanOut` here skipped that: an application
+  // filled entirely inside an iframe by this shortcut was never recorded.
+  //
   // A frame count of zero means no engine is loaded anywhere in the tab. That is
   // recoverable — detection is deliberately conservative, and pressing the
   // shortcut is an unambiguous instruction — so force the engine in and retry.
   // A rejected `rf_force_load` is the other case: nothing is listening at all,
   // on a chrome:// page, the Web Store or the PDF viewer, and that is hopeless.
-  const filled = await fanOut(target.id, "rf_fill");
-  if (filled.length) return;
+  const result = await handlers.tab_action({ action: "rf_fill", tabId: target.id });
+  if (result.frames) return;
 
   let reachable = true;
   await chrome.tabs.sendMessage(target.id, { type: "rf_force_load" })
@@ -344,6 +367,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   // than calling it dead on one miss.
   for (let i = 0; i < 6; i++) {
     await new Promise((r) => setTimeout(r, 250));
-    if ((await fanOut(target.id, "rf_fill")).length) return;
+    const retry = await handlers.tab_action({ action: "rf_fill", tabId: target.id });
+    if (retry.frames) return;
   }
 });

@@ -152,11 +152,24 @@ function withDefaults(stored, defaults) {
  */
 export async function loadContext() {
   const raw = await area().get(KEYS);
+  const resumeMeta = withDefaults(raw.resumeMeta, DEFAULT_RESUME_META);
+
+  // An install from before `textFileName` existed has none in storage, and
+  // `withDefaults` fills the gap with the default "" — indistinguishable from
+  // text genuinely typed by hand, which `resumeTextIsCurrent` treats as
+  // permanently current. Before this field existed, `text` only ever got into
+  // storage by reading the file named in `fileName`, so that is the honest
+  // reading of an old record: tie it to that file rather than to none, so a
+  // later replacement is correctly seen as stale instead of trusted forever.
+  if (raw.resumeMeta && !("textFileName" in raw.resumeMeta) && resumeMeta.fileName) {
+    resumeMeta.textFileName = resumeMeta.fileName;
+  }
+
   return {
     profile: withDefaults(raw.profile, DEFAULT_PROFILE),
     learned: raw.learned || {},
     settings: withDefaults(raw.settings, DEFAULT_SETTINGS),
-    resumeMeta: withDefaults(raw.resumeMeta, DEFAULT_RESUME_META),
+    resumeMeta,
     // { "<field key>": ["ruleId", …] } — pairings you have overridden.
     corrections: raw.corrections || {}
   };

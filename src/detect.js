@@ -183,6 +183,11 @@
    * has no fields, so it saw an ordinary page and loaded nothing. The result was
    * a form that filled from the toolbar and had no on-page button at all.
    *
+   * Checked against GENERIC_FORM_HOST too, not just ATS_HOST: a Google Form or
+   * Typeform embedded via its own "Embed" snippet is the same shape, and this
+   * file's own comment on GENERIC_FORM_HOST says employers "routinely" use one
+   * for exactly this.
+   *
    * Only the top frame asks this, and only after its own probe found nothing.
    */
   function hasEmbeddedApplication() {
@@ -192,7 +197,7 @@
     for (let i = 0; i < frames.length && i < 30; i++) {
       let host;
       try { host = new URL(frames[i].src, location.href).hostname; } catch { continue; }
-      if (ATS_HOST.test(host)) return true;
+      if (ATS_HOST.test(host) || GENERIC_FORM_HOST.test(host)) return true;
     }
     return false;
   }
@@ -234,6 +239,13 @@
    * for. Counting only batches that brought in controls (or a shadow host, or a
    * route change) makes the budget mean what it says.
    */
+  // ARIA_CONTROL plus the individual roles a group is made of — a `<div
+  // role="radiogroup">` containing `<div role="radio">` children is exactly
+  // the shape Google Forms and similar builders render one question as, and
+  // neither half of it was watched for below without these.
+  const WORTH_PROBING_SELECTOR =
+    "input,select,textarea," + ARIA_CONTROL + ',[role="radio"],[role="checkbox"]';
+
   function worthProbing(records) {
     for (const r of records) {
       const added = r.addedNodes;
@@ -243,7 +255,12 @@
         if (n.shadowRoot) return true;
         const tag = n.tagName;
         if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "FORM") return true;
-        if (n.querySelector?.("input,select,textarea," + ARIA_CONTROL)) return true;
+        // The added node can BE the control — a whole question appended as one
+        // already-populated unit — not just contain one somewhere inside it.
+        // `querySelector` only searches descendants, so that case needs its
+        // own check.
+        if (n.matches?.(WORTH_PROBING_SELECTOR)) return true;
+        if (n.querySelector?.(WORTH_PROBING_SELECTOR)) return true;
       }
     }
     return false;
