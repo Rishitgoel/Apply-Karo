@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { corpus, negativePairs, profile, renderFixture } from "./fixtures/autofill/corpus.mjs";
+assert.equal(corpus.length, 20, "baseline has 20 structural variants");
+assert.equal(corpus.flatMap((f) => f.questions).length, 500, "all gold questions are counted, not only detected ones");
+assert.equal(new Set(corpus.flatMap((f) => f.questions.map((q) => q.id))).size, 500, "gold IDs are globally unique");
+assert.ok(corpus.some((f) => f.split === "heldout") && corpus.some((f) => f.split === "tuning"), "splits use whole templates");
+assert.equal(negativePairs.length, 10, "adversarial pairs cover semantic context differences");
+assert.equal(negativePairs.every((p) => p.equivalent === false), true);
+assert.equal(profile.personal.email.endsWith(".invalid"), true, "test contact is synthetic");
+assert.equal(renderFixture(corpus[0]).includes('value="Avery"'), false, "gold values are not embedded as prefilled answers");
+console.log("corpus: 8 assertions passed");

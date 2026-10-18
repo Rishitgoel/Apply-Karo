@@ -1,0 +1,2372 @@
+{
+  "measuredAt": "2026-10-07T13:51:22.845Z",
+  "browser": "154.0.4258.62",
+  "bundleHash": "2a32a7668360872e2b3ece810f8d6c57f79f6be5ef9aba50f6940c76fd01501f",
+  "evidenceKind": "synthetic-heldout-resolver-and-real-extension-worker",
+  "checks": [
+    {
+      "id": "exact-fact-through-worker",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "exact-fact-zero-fetch",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "reordered-stable-ids",
+      "actual": [
+        [
+          "prose-one",
+          "draft"
+        ],
+        [
+          "prose-two",
+          "draft"
+        ]
+      ],
+      "expected": [
+        [
+          "prose-one",
+          "draft"
+        ],
+        [
+          "prose-two",
+          "draft"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "id": "worker-cache-hit",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "worker-cache-zero-fetch",
+      "actual": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "id": "unknown-id-no-write",
+      "actual": null,
+      "expected": null,
+      "pass": true
+    },
+    {
+      "id": "schema-retry-bounded",
+      "actual": 2,
+      "expected": 2,
+      "pass": true
+    },
+    {
+      "id": "abstention-no-retry",
+      "actual": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "id": "in-flight-profile-change-deferred",
+      "actual": "source_changed",
+      "expected": "source_changed",
+      "pass": true
+    },
+    {
+      "id": "worker-cancellation-no-write",
+      "actual": "cancelled",
+      "expected": "cancelled",
+      "pass": true
+    },
+    {
+      "id": "stale-resume-does-not-ground",
+      "actual": null,
+      "expected": null,
+      "pass": true
+    },
+    {
+      "id": "heldout-factual-precision-at-least-99-percent",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "heldout-no-unsupported-safety-answer",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    }
+  ],
+  "metrics": {
+    "templates": 9,
+    "observations": 225,
+    "approved": 132,
+    "correct": 132,
+    "precision": 1,
+    "coverage": 0.6666666666666666,
+    "answerable": 198,
+    "unsupported": 0
+  },
+  "rows": [
+    {
+      "id": "native-multipart-q1",
+      "question": "First name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q2",
+      "question": "Last name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q3",
+      "question": "Email address",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q4",
+      "question": "Phone number",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q5",
+      "question": "City",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q6",
+      "question": "State",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q7",
+      "question": "Postal code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q8",
+      "question": "Country",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q9",
+      "question": "Street address",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q10",
+      "question": "LinkedIn URL",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q11",
+      "question": "GitHub URL",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q12",
+      "question": "Personal website",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q19",
+      "question": "Are you authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q20",
+      "question": "Will you require visa sponsorship in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q21",
+      "question": "Notice period",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q22",
+      "question": "Years of experience",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q23",
+      "question": "Why do you want to join Example Company?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q24",
+      "question": "Current annual salary in USD",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q25",
+      "question": "Gender",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q13",
+      "question": "University",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q14",
+      "question": "Degree",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q15",
+      "question": "Field of study",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q16",
+      "question": "GPA",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q17",
+      "question": "Employer",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-multipart-q18",
+      "question": "Job title",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-multipart"
+    },
+    {
+      "id": "native-long-q1",
+      "question": "Given name. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q2",
+      "question": "Family name. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q3",
+      "question": "Your email. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q4",
+      "question": "Telephone. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q5",
+      "question": "City of residence. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q6",
+      "question": "State / province. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "California",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q7",
+      "question": "ZIP code. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "94301",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q8",
+      "question": "Country of residence. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "United States",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q9",
+      "question": "Address line 1. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q10",
+      "question": "LinkedIn profile. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q11",
+      "question": "GitHub profile. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q12",
+      "question": "Website URL. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q19",
+      "question": "Are you legally authorized to work in the United States?. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "compound_or_temporal_authorization",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q20",
+      "question": "Do you need sponsorship to work in the United States?. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "No",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "compound_or_temporal_authorization",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q21",
+      "question": "What is your notice period?. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q22",
+      "question": "Total experience in years. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q23",
+      "question": "Why this employer?. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q24",
+      "question": "What is your current salary in USD per year?. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q25",
+      "question": "Gender identity. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q13",
+      "question": "School name. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q14",
+      "question": "Degree level. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q15",
+      "question": "Major. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q16",
+      "question": "Grade point average. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q17",
+      "question": "Company name. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "native-long-q18",
+      "question": "Position. Please use the exact information you have confirmed for this application and consider the applicable jurisdiction, entity, currency and time period before answering. This field refers only to the current application and does not authorize changing facts.",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "native-long"
+    },
+    {
+      "id": "ashby-style-q1",
+      "question": "First name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q2",
+      "question": "Last name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q3",
+      "question": "Email address",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q4",
+      "question": "Phone number",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q5",
+      "question": "City",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q6",
+      "question": "State",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q7",
+      "question": "Postal code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q8",
+      "question": "Country",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q9",
+      "question": "Street address",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q10",
+      "question": "LinkedIn URL",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q11",
+      "question": "GitHub URL",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q12",
+      "question": "Personal website",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q19",
+      "question": "Are you authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q20",
+      "question": "Will you require visa sponsorship in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q21",
+      "question": "Notice period",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q22",
+      "question": "Years of experience",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q23",
+      "question": "Why do you want to join Example Company?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q24",
+      "question": "Current annual salary in USD",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q25",
+      "question": "Gender",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q13",
+      "question": "University",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q14",
+      "question": "Degree",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q15",
+      "question": "Field of study",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q16",
+      "question": "GPA",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q17",
+      "question": "Employer",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "ashby-style-q18",
+      "question": "Job title",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "ashby-style"
+    },
+    {
+      "id": "google-multipart-q1",
+      "question": "First name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q2",
+      "question": "Last name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q3",
+      "question": "Email address",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q4",
+      "question": "Phone number",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q5",
+      "question": "City",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q6",
+      "question": "State",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q7",
+      "question": "Postal code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q8",
+      "question": "Country",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q9",
+      "question": "Street address",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q10",
+      "question": "LinkedIn URL",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q11",
+      "question": "GitHub URL",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q12",
+      "question": "Personal website",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q19",
+      "question": "Are you authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q20",
+      "question": "Will you require visa sponsorship in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q21",
+      "question": "Notice period",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q22",
+      "question": "Years of experience",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q23",
+      "question": "Why do you want to join Example Company?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q24",
+      "question": "Current annual salary in USD",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q25",
+      "question": "Gender",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q13",
+      "question": "University",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q14",
+      "question": "Degree",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q15",
+      "question": "Field of study",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q16",
+      "question": "GPA",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q17",
+      "question": "Employer",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "google-multipart-q18",
+      "question": "Job title",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "google-multipart"
+    },
+    {
+      "id": "workday-delayed-q1",
+      "question": "Given name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q2",
+      "question": "Family name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q3",
+      "question": "Your email",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q4",
+      "question": "Telephone",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q5",
+      "question": "City of residence",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q6",
+      "question": "State / province",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q7",
+      "question": "ZIP code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q8",
+      "question": "Country of residence",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q9",
+      "question": "Address line 1",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q10",
+      "question": "LinkedIn profile",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q11",
+      "question": "GitHub profile",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q12",
+      "question": "Website URL",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q19",
+      "question": "Are you legally authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Yes",
+      "reason": "confirmed_country_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q20",
+      "question": "Do you need sponsorship to work in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "resolved",
+      "value": "No",
+      "reason": "confirmed_country_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q21",
+      "question": "What is your notice period?",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q22",
+      "question": "Total experience in years",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q23",
+      "question": "Why this employer?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q24",
+      "question": "What is your current salary in USD per year?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q25",
+      "question": "Gender identity",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q13",
+      "question": "School name",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q14",
+      "question": "Degree level",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Bachelor's Degree",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q15",
+      "question": "Major",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Computer Science",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q16",
+      "question": "Grade point average",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q17",
+      "question": "Company name",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-delayed-q18",
+      "question": "Position",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-delayed"
+    },
+    {
+      "id": "workday-virtualized-q1",
+      "question": "First name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q2",
+      "question": "Last name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q3",
+      "question": "Email address",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q4",
+      "question": "Phone number",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q5",
+      "question": "City",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q6",
+      "question": "State",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q7",
+      "question": "Postal code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q8",
+      "question": "Country",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q9",
+      "question": "Street address",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q10",
+      "question": "LinkedIn URL",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q11",
+      "question": "GitHub URL",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q12",
+      "question": "Personal website",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q19",
+      "question": "Are you authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Yes",
+      "reason": "confirmed_country_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q20",
+      "question": "Will you require visa sponsorship in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "resolved",
+      "value": "No",
+      "reason": "confirmed_country_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q21",
+      "question": "Notice period",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q22",
+      "question": "Years of experience",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q23",
+      "question": "Why do you want to join Example Company?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q24",
+      "question": "Current annual salary in USD",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q25",
+      "question": "Gender",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q13",
+      "question": "University",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q14",
+      "question": "Degree",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Bachelor's Degree",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q15",
+      "question": "Field of study",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Computer Science",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q16",
+      "question": "GPA",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q17",
+      "question": "Employer",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-virtualized-q18",
+      "question": "Job title",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-virtualized"
+    },
+    {
+      "id": "workday-dependent-q1",
+      "question": "Given name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q2",
+      "question": "Family name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q3",
+      "question": "Your email",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q4",
+      "question": "Telephone",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q5",
+      "question": "City of residence",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q6",
+      "question": "State / province",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q7",
+      "question": "ZIP code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q8",
+      "question": "Country of residence",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q9",
+      "question": "Address line 1",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q10",
+      "question": "LinkedIn profile",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q11",
+      "question": "GitHub profile",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q12",
+      "question": "Website URL",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q19",
+      "question": "Are you legally authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Yes",
+      "reason": "confirmed_country_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q20",
+      "question": "Do you need sponsorship to work in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "resolved",
+      "value": "No",
+      "reason": "confirmed_country_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q21",
+      "question": "What is your notice period?",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q22",
+      "question": "Total experience in years",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q23",
+      "question": "Why this employer?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q24",
+      "question": "What is your current salary in USD per year?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q25",
+      "question": "Gender identity",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q13",
+      "question": "School name",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q14",
+      "question": "Degree level",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Bachelor's Degree",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q15",
+      "question": "Major",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Computer Science",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q16",
+      "question": "Grade point average",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q17",
+      "question": "Company name",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "workday-dependent-q18",
+      "question": "Position",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "workday-dependent"
+    },
+    {
+      "id": "iframe-q1",
+      "question": "First name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q2",
+      "question": "Last name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q3",
+      "question": "Email address",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q4",
+      "question": "Phone number",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q5",
+      "question": "City",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q6",
+      "question": "State",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q7",
+      "question": "Postal code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q8",
+      "question": "Country",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q9",
+      "question": "Street address",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q10",
+      "question": "LinkedIn URL",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q11",
+      "question": "GitHub URL",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q12",
+      "question": "Personal website",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q19",
+      "question": "Are you authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q20",
+      "question": "Will you require visa sponsorship in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q21",
+      "question": "Notice period",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q22",
+      "question": "Years of experience",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q23",
+      "question": "Why do you want to join Example Company?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q24",
+      "question": "Current annual salary in USD",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q25",
+      "question": "Gender",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q13",
+      "question": "University",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q14",
+      "question": "Degree",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q15",
+      "question": "Field of study",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q16",
+      "question": "GPA",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q17",
+      "question": "Employer",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "iframe-q18",
+      "question": "Job title",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "iframe"
+    },
+    {
+      "id": "dynamic-reuse-q1",
+      "question": "Given name",
+      "expected": "Avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Avery",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q2",
+      "question": "Family name",
+      "expected": "Shah",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Shah",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q3",
+      "question": "Your email",
+      "expected": "avery@example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "avery@example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q4",
+      "question": "Telephone",
+      "expected": "+14155550123",
+      "answerable": true,
+      "status": "resolved",
+      "value": "+14155550123",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q5",
+      "question": "City of residence",
+      "expected": "Palo Alto",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Palo Alto",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q6",
+      "question": "State / province",
+      "expected": "California",
+      "answerable": true,
+      "status": "resolved",
+      "value": "California",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q7",
+      "question": "ZIP code",
+      "expected": "94301",
+      "answerable": true,
+      "status": "resolved",
+      "value": "94301",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q8",
+      "question": "Country of residence",
+      "expected": "United States",
+      "answerable": true,
+      "status": "resolved",
+      "value": "United States",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q9",
+      "question": "Address line 1",
+      "expected": "123 Example Lane",
+      "answerable": true,
+      "status": "resolved",
+      "value": "123 Example Lane",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q10",
+      "question": "LinkedIn profile",
+      "expected": "https://example.invalid/avery",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/avery",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q11",
+      "question": "GitHub profile",
+      "expected": "https://example.invalid/code",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid/code",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q12",
+      "question": "Website URL",
+      "expected": "https://example.invalid",
+      "answerable": true,
+      "status": "resolved",
+      "value": "https://example.invalid",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q19",
+      "question": "Are you legally authorized to work in the United States?",
+      "expected": "Yes",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q20",
+      "question": "Do you need sponsorship to work in the United States?",
+      "expected": "No",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_scoped_authorization",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q21",
+      "question": "What is your notice period?",
+      "expected": "30 days",
+      "answerable": true,
+      "status": "resolved",
+      "value": "30 days",
+      "reason": "confirmed_typed_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q22",
+      "question": "Total experience in years",
+      "expected": "2",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q23",
+      "question": "Why this employer?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q24",
+      "question": "What is your current salary in USD per year?",
+      "expected": null,
+      "answerable": false,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q25",
+      "question": "Gender identity",
+      "expected": null,
+      "answerable": false,
+      "status": "blocked",
+      "value": null,
+      "reason": "sensitive",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q13",
+      "question": "School name",
+      "expected": "Example University",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example University",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q14",
+      "question": "Degree level",
+      "expected": "Bachelor's Degree",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q15",
+      "question": "Major",
+      "expected": "Computer Science",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q16",
+      "question": "Grade point average",
+      "expected": "3.7",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q17",
+      "question": "Company name",
+      "expected": "Example Labs",
+      "answerable": true,
+      "status": "resolved",
+      "value": "Example Labs",
+      "reason": "compatible_profile_fact",
+      "template": "dynamic-reuse"
+    },
+    {
+      "id": "dynamic-reuse-q18",
+      "question": "Position",
+      "expected": "Software Engineer",
+      "answerable": true,
+      "status": "needs_user",
+      "value": null,
+      "reason": "missing_compatible_fact",
+      "template": "dynamic-reuse"
+    }
+  ],
+  "passed": true,
+  "limitations": [
+    "Heldout templates were defined in Phase 0 and are now a regression set; not unseen live employers.",
+    "Resolver precision is distinct from verified DOM write success.",
+    "No live provider, ATS, native popup or human prose/timing acceptance."
+  ]
+}

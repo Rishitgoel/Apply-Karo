@@ -1,0 +1,8 @@
+{
+  "status": "pending",
+  "passed": false,
+  "reason": "Set AUTOFILL_LIVE_PROVIDER and AUTOFILL_LIVE_MODEL plus the selected provider key in the environment, or run the dashboard synthetic check.",
+  "requests": 0,
+  "costUsd": null,
+  "syntheticOnly": true
+}

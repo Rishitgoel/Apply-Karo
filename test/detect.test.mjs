@@ -64,23 +64,25 @@ function runSentinel({ href, controls = [], shadow = [], bodyText = "" }) {
   const chrome = {
     runtime: {
       getURL: (p) => `chrome-extension://x/${p}`,
-      onMessage: { addListener: (fn) => listeners.push(fn) }
+      onMessage: { addListener: (fn) => listeners.push(fn) },
+      // The engine no longer arrives by dynamic import — detect.js asks the
+      // service worker to inject it, because a web-accessible engine is a URL
+      // any page can probe to detect the extension. So "did it try to load the
+      // engine" is now "did it send rf_inject".
+      sendMessage: (msg) => {
+        if (msg?.type === "rf_inject") importedEngine = true;
+        return Promise.resolve({ ok: true });
+      }
     }
   };
 
-  const sandboxImport = () => { importedEngine = true; return Promise.resolve({ boot() {} }); };
-
-  // detect.js uses bare `import(...)`, which is illegal in a Function body, so
-  // route it through an injected helper without altering any logic under test.
-  const code = SRC.replace(/\bimport\(chrome\.runtime\.getURL\(([^)]*)\)\)/g, "__imp($1)");
-
   new Function("window", "document", "chrome", "location", "MutationObserver",
-               "setTimeout", "__imp", "self",
-    `${code}`
+               "setTimeout", "self",
+    `${SRC}`
   )(win, doc, chrome, win.location,
     function () { return { observe() {}, disconnect() {} }; },
     (fn) => { if (typeof fn === "function") idleScheduled = idleScheduled || fn; return 0; },
-    sandboxImport, win);
+    win);
 
   return {
     listenerCount: listeners.length,

@@ -1,4 +1,6 @@
 // Apply karo — profile schema + storage access.
+import { knowledge } from "../knowledge/client.js";
+import { DEFAULT_RELEASE } from "./release.js";
 //
 // Storage is deliberately split across keys so that readers only pay for what
 // they need. In v1 everything (including the base64 PDF, ~105 KB) lived under a
@@ -30,13 +32,16 @@ export const DEFAULT_PROFILE = {
     lastName: "",
     middleName: "",
     fullName: "",
+    preferredName: "",
     email: "",
     phone: "",
     website: "",
     linkedin: "",
     github: "",
     portfolio: "",
+    twitter: "",
     address: "",
+    addressLine2: "",
     city: "",
     state: "",
     postalCode: "",
@@ -61,11 +66,12 @@ export const DEFAULT_PROFILE = {
 };
 
 export const DEFAULT_SETTINGS = {
+  release: DEFAULT_RELEASE,
   // Fill automatically once a job-application page is detected. Rules only —
   // the AI pass never fires without an explicit user action.
   autofillOnLoad: true,
   // Allow the Gemini pass to attempt fields the rule engine could not resolve.
-  aiAutofillEnabled: false,
+  aiAutofillEnabled: true,
   // Attach the stored resume to a form's upload box as part of a fill. Only
   // boxes that ask for a resume, or a lone upload on an application form — see
   // pickResumeTargets in shared/rules.js.
@@ -79,11 +85,9 @@ export const DEFAULT_SETTINGS = {
   provider: "gemini",
   geminiApiKey: "",
   // Must stay equal to PROVIDERS.gemini.models[0] in shared/ai.js, which is what
-  // resolveProvider falls back to when nothing is stored. Flash-Lite is the
-  // right default for this extension specifically: the two things it asks a
-  // model to do most are reading a resume PDF and answering short form fields,
-  // which is exactly the high-throughput document work this tier is built for.
-  geminiModel: "gemini-3.5-flash-lite",
+  // resolveProvider falls back to when nothing is stored. Gemini 2.0 Flash is
+  // the fast, stable GA model for document and form filling.
+  geminiModel: "gemini-3.8-flash",
   groqApiKey: "",
   groqModel: "llama-3.3-70b-versatile",
 
@@ -99,6 +103,12 @@ export const DEFAULT_SETTINGS = {
   followUpDays: 14,
   // Put the number of fields filled on the toolbar icon.
   showBadge: true,
+  // Show an exclusive "Fill with AI" button on fields demanding paragraph answers.
+  fieldAiButtonEnabled: true,
+  // Optional default custom instructions when generating paragraph answers.
+  defaultCustomInstruction: "",
+  // Local redacted stage diagnostics. Off by default; no labels or answers retained.
+  diagnosticsEnabled: false,
   // Hostnames the extension leaves completely alone.
   disabledSites: []
 };
@@ -126,7 +136,38 @@ export function resumeTextIsCurrent(meta = {}) {
   return meta.textFileName === meta.fileName;
 }
 
-const KEYS = ["profile", "learned", "settings", "resumeMeta", "corrections"];
+const KEYS = ["profile", "learned", "settings", "resumeMeta", "corrections", "answerTrust", "questionFixes"];
+
+/**
+ * Is the extension this page was injected by still there?
+ *
+ * Reloading an unpacked extension, updating it, or switching it off leaves the
+ * content script already injected into every open tab running against a dead
+ * `chrome.runtime`. Every storage read and every message from that orphan then
+ * rejects with "Extension context invalidated" — asynchronously, out of
+ * whatever the user just clicked, as an uncaught promise nobody sees but the
+ * console. The panel goes quiet, the buttons keep looking enabled, and the only
+ * cure (reload the page) is the one thing nothing on screen suggests.
+ *
+ * `chrome.runtime.id` is the tell: it is undefined exactly when the port behind
+ * these APIs has gone. Reading it can itself throw on some Chrome versions,
+ * hence the try.
+ */
+export function extensionAlive() {
+  try {
+    return !!chrome?.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
+/** Is this error that page-outlived-the-extension failure, rather than a bug? */
+export function isContextGone(err) {
+  return /context invalidated|extension context/i.test(err?.message || "") || !extensionAlive();
+}
+
+export const STALE_MESSAGE =
+  "Apply karo was reloaded or updated while this page was open. Refresh the page to use it again.";
 
 function area() {
   return chrome.storage.local;
@@ -150,7 +191,9 @@ function withDefaults(stored, defaults) {
  * Everything a content script needs, minus the resume binary.
  * One storage round-trip; ~2-6 KB rather than ~110 KB.
  */
-export async function loadContext() {
+export async function loadContext({ includeUnverified = false } = {}) {
+  const knowledgeState = typeof document !== "undefined" && chrome.runtime?.sendMessage && chrome.runtime?.id
+    ? await knowledge("snapshot") : null;
   const raw = await area().get(KEYS);
   const resumeMeta = withDefaults(raw.resumeMeta, DEFAULT_RESUME_META);
 
@@ -165,10 +208,24 @@ export async function loadContext() {
     resumeMeta.textFileName = resumeMeta.fileName;
   }
 
+  const trusted = (values, records) => Object.fromEntries(Object.entries(values || {}).filter(([key, value]) => records?.[key]?.source === "user-confirmed" && records[key].value === value));
+  const profile = withDefaults(raw.profile, DEFAULT_PROFILE);
+  const legacyUnverified = {
+    learned: Object.fromEntries(Object.entries(raw.learned || {}).filter(([k, v]) => raw.answerTrust?.learned?.[k]?.value !== v || raw.answerTrust?.learned?.[k]?.source !== "user-confirmed")),
+    customFields: Object.fromEntries(Object.entries(profile.customFields || {}).filter(([k, v]) => raw.answerTrust?.customFields?.[k]?.value !== v || raw.answerTrust?.customFields?.[k]?.source !== "user-confirmed"))
+  };
+  if (!includeUnverified) profile.customFields = trusted(profile.customFields, raw.answerTrust?.customFields);
+  const settings = withDefaults(raw.settings, DEFAULT_SETTINGS);
+  const disclosure = Object.values(knowledgeState?.facts || {}).find(r => r.status === "confirmed" && r.intent === "disclosure.preference");
+  if (disclosure && ["skip", "ask"].includes(disclosure.value)) settings.skipSensitive = true;
   return {
-    profile: withDefaults(raw.profile, DEFAULT_PROFILE),
-    learned: raw.learned || {},
-    settings: withDefaults(raw.settings, DEFAULT_SETTINGS),
+    knowledge: knowledgeState,
+    profile,
+    learned: includeUnverified ? raw.learned || {} : trusted(raw.learned, raw.answerTrust?.learned),
+    legacyUnverified,
+    answerTrust: raw.answerTrust || { version: 1, learned: {}, customFields: {} },
+    questionFixes: raw.questionFixes || {},
+    settings,
     resumeMeta,
     // { "<field key>": ["ruleId", …] } — pairings you have overridden.
     corrections: raw.corrections || {}
@@ -193,16 +250,45 @@ export async function save(patch) {
   await area().set(patch);
 }
 
-export async function saveProfile(profile) {
-  await area().set({ profile });
+let answerWrite = Promise.resolve();
+function serializeAnswers(action) {
+  const task = answerWrite.catch(() => {}).then(action); answerWrite = task; return task;
 }
-
+async function saveAnswerMap(kind, values, { confirmed = false, replace = false } = {}, profile = null) {
+  return serializeAnswers(async () => {
+    const raw = await area().get(["profile", "learned", "answerTrust"]);
+    const old = kind === "learned" ? raw.learned || {} : raw.profile?.customFields || {};
+    const trust = raw.answerTrust || { version: 1, learned: {}, customFields: {} };
+    trust[kind] ||= {};
+    if (confirmed) for (const [key, value] of Object.entries(values || {})) {
+      // Saving unrelated profile edits must not approve unchanged legacy guesses.
+      if (old[key] !== value) trust[kind][key] = { value, source: "user-confirmed", confirmedAt: Date.now() };
+    }
+    const merged = replace ? values : { ...old, ...values };
+    const patch = kind === "learned" ? { learned: merged } : { profile: { ...profile, customFields: merged } };
+    await area().set({ ...patch, answerTrust: trust });
+  });
+}
+export async function saveProfile(profile, options = {}) {
+  await saveAnswerMap("customFields", profile.customFields || {}, options, profile);
+}
 export async function saveSettings(settings) {
-  await area().set({ settings });
+  // Ordinary preference writers may hold an old settings snapshot. Only the
+  // dedicated release controls change rollout state; stale UI cannot unpause it.
+  const { settings: current = {} } = await area().get("settings");
+  await area().set({ settings: { ...settings, release: Object.hasOwn(current, "release") ? current.release : DEFAULT_RELEASE } });
 }
-
-export async function saveLearned(learned) {
-  await area().set({ learned });
+export async function saveLearned(learned, options = {}) { await saveAnswerMap("learned", learned, options); }
+export async function confirmSavedAnswer(kind, key, value) {
+  if (!["learned", "customFields"].includes(kind)) throw new Error("Invalid saved answer kind.");
+  return serializeAnswers(async () => {
+    const raw = await area().get(["profile", "learned", "answerTrust"]);
+    const values = kind === "learned" ? raw.learned || {} : raw.profile?.customFields || {};
+    if (values[key] !== value) throw new Error("This answer changed. Refresh and review it again.");
+    const trust = raw.answerTrust || { version: 1, learned: {}, customFields: {} };
+    trust[kind] ||= {}; trust[kind][key] = { value, source: "user-confirmed", confirmedAt: Date.now() };
+    await area().set({ answerTrust: trust });
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,6 +405,79 @@ export function priorApplicationsFor(history = [], { company, url } = {}) {
   if (!key) return [];
   return history.filter((h) =>
     h.url !== url && String(h.company || "").trim().toLowerCase() === key);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The posting you are working on
+//
+// One slot, not a list. A job description is read on the listing page and needed
+// two pages later on the form, so it has to outlive the tab it was read from —
+// but you only ever apply to one job at a time, and a list would turn a
+// one-press feature into a picker.
+//
+// `match` and `letter` live in here rather than beside the run that produced
+// them because the popup is a window that closes the moment you look away. The
+// service worker writes the result here when it lands, so re-opening the popup
+// shows the letter that was drafted while it was shut.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const DEFAULT_JOB = {
+  text: "",
+  // "capture" — read off a page you pressed Capture on.
+  // "manual"  — pasted in by hand.
+  // "page"    — picked up automatically from the page a match or letter ran on.
+  source: "",
+  company: "", role: "", title: "", url: "", host: "",
+  ts: 0,
+  match: null,
+  letter: "", letterTs: 0,
+  // "match" | "letter" while the service worker is working, so a popup opened
+  // mid-run says so instead of looking empty.
+  running: "", runningSince: 0,
+  error: ""
+};
+
+export async function loadJob() {
+  const raw = await area().get("job");
+  return withDefaults(raw.job, DEFAULT_JOB);
+}
+
+export async function saveJob(job) {
+  await area().set({ job: { ...job, text: String(job.text || "").slice(0, 9000) } });
+}
+
+/** Change part of the stored posting without disturbing the rest. */
+export async function patchJob(patch) {
+  const next = { ...(await loadJob()), ...patch };
+  await saveJob(next);
+  return next;
+}
+
+/**
+ * Replace the stored posting with one just read from a page.
+ *
+ * A match and a letter belong to the posting they were made for, so they only
+ * survive when this is the same posting arriving again — re-capturing the page
+ * you already captured should not throw away the letter you just paid for, and
+ * capturing a different job must never leave the last job's letter behind it.
+ */
+export async function setJob(posting) {
+  const prev = await loadJob();
+  const same = !!prev.url && prev.url === posting.url;
+  const next = {
+    ...DEFAULT_JOB,
+    ...posting,
+    ts: Date.now(),
+    match: same ? prev.match : null,
+    letter: same ? prev.letter : "",
+    letterTs: same ? prev.letterTs : 0
+  };
+  await saveJob(next);
+  return next;
+}
+
+export async function clearJob() {
+  await area().remove("job");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -439,6 +598,7 @@ export async function exportAll({ includeKeys = false } = {}) {
     settings.groqApiKey = "";
   }
   return {
+    knowledge: typeof document !== "undefined" && chrome.runtime?.id ? await knowledge("export") : undefined,
     _format: "applykaro-backup",
     _version: 2,
     exportedAt: new Date().toISOString(),
@@ -500,11 +660,13 @@ export async function importAll(data) {
   if (Array.isArray(data.letters)) patch.letters = [...data.letters, ...(current.letters || [])].slice(0, 60);
 
   await area().set(patch);
+  if (data.knowledge && typeof document !== "undefined" && chrome.runtime?.id) await knowledge("import", { data: data.knowledge });
   return Object.keys(patch);
 }
 
 /** Wipe everything this extension has stored, including the resume. */
 export async function resetAll() {
+  if (typeof document !== "undefined" && chrome.runtime?.id) await knowledge("clear");
   await area().clear();
   await area().set({ schemaVersion: 2 });
 }
@@ -544,16 +706,7 @@ export async function migrateFromV1() {
     patch.learned = raw.learnedMappings;
   }
 
-  // v1 defaulted to a model id that did not exist when v1 shipped, so a fresh
-  // v1 install failed every AI call until the user changed it by hand. Google
-  // has since released a model under that name, which makes this rewrite
-  // unnecessary rather than wrong — it only ever fires on an unmigrated v1
-  // install, and it moves them from one working model to another. Left in place
-  // because removing it would leave the genuinely-stranded installs stranded.
-  if (raw.settings && raw.settings.geminiModel === "gemini-3.5-flash") {
-    patch.settings = { ...raw.settings, geminiModel: DEFAULT_SETTINGS.geminiModel };
-  }
-
+  // Preserve explicit model selections; health checks explain retired models.
   await area().set(patch);
   await area().remove(["resume", "learnedMappings"]);
   return true;

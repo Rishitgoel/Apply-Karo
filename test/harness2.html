@@ -32,8 +32,12 @@
     await import(`../src/engine/steps.js${v}`);
   // The real resolver, not a copy — so this harness cannot pass against logic
   // that only exists in the test.
-  const { ruleValue, jobDescriptionFromPage, MIN_JD_CHARS } =
-    await import(`../src/engine/index.js${v}`);
+  const { ruleValue } = await import(`../src/engine/index.js${v}`);
+  // The posting reader moved out of the engine: the page holding a job
+  // description is the listing page, which has no form on it and so never gets
+  // the engine injected. It is imported from where it lives now.
+  const { jobDescriptionFromPage, MIN_JD_CHARS } =
+    await import(`../src/shared/posting.js${v}`);
 
   const profile = {
     personal: { firstName: "Rishit", lastName: "Goel", fullName: "Rishit Goel",

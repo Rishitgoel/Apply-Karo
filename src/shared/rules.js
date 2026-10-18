@@ -1,3 +1,4 @@
+import { canonicalQuestion, contextualKey } from "./field-identity.js";
 // Apply karo — field definitions and the scoring matcher.
 //
 // v1 matched with `label.includes(keyword)` and took the first rule that hit,
@@ -67,6 +68,14 @@ export const RULES = [
     names: [["middle", "name"], ["mname"], ["middle", "initial"]],
     keywords: ["middle name", "middle initial"],
     path: "personal.middleName"
+  },
+  {
+    id: "preferredName",
+    names: [["preferred", "name"], ["nickname"], ["chosen", "name"], ["preferred", "first", "name"]],
+    keywords: ["preferred name", "chosen name", "nickname", "preferred first name", "goes by"],
+    negatives: ["legal first name", "last name", "surname"],
+    path: "personal.preferredName",
+    fallback: (p) => p.personal?.firstName || null
   },
   {
     id: "fullName",
@@ -159,6 +168,15 @@ export const RULES = [
     path: "personal.address"
   },
   {
+    id: "addressLine2",
+    autocomplete: ["address-line2"],
+    names: [["address", "line", "2"], ["address", "2"], ["apt"], ["suite"], ["unit"], ["building"], ["addressline2"]],
+    keywords: ["address line 2", "address 2", "apt", "suite", "unit", "building", "apartment"],
+    negatives: ["address line 1", "street address"],
+    path: "personal.addressLine2",
+    fallback: (p) => p.customFields?.addressLine2 || null
+  },
+  {
     id: "city",
     autocomplete: ["address-level2"],
     names: [["city"], ["town"], ["address", "city"], ["locality"]],
@@ -204,7 +222,8 @@ export const RULES = [
     names: [["work", "authorization"], ["authorized"], ["eligibility"], ["legal", "right"], ["work", "auth"]],
     keywords: [
       "authorized to work", "work authorization", "legally authorized", "eligible to work",
-      "legal right to work", "employment eligibility", "right to work", "authorised to work"
+      "legal right to work", "employment eligibility", "right to work", "authorised to work",
+      "are you legally authorized", "are you authorized", "work authorization status"
     ],
     path: "personal.authorizedToWork",
     multi: true
@@ -214,7 +233,8 @@ export const RULES = [
     names: [["sponsorship"], ["visa", "sponsorship"], ["require", "sponsorship"], ["need", "sponsorship"]],
     keywords: [
       "sponsorship", "visa sponsorship", "require sponsorship", "need sponsorship",
-      "immigration sponsorship", "will you now or in the future require"
+      "immigration sponsorship", "will you now or in the future require",
+      "require visa sponsorship", "visa sponsorship requirement", "do you require sponsorship"
     ],
     path: "personal.sponsorshipRequired",
     multi: true
@@ -239,14 +259,17 @@ export const RULES = [
   {
     id: "degree",
     names: [["degree"], ["degree", "type"], ["education", "level"], ["qualification"]],
-    keywords: ["degree", "degree type", "level of education", "education level", "highest degree", "qualification"],
+    keywords: [
+      "degree", "degree type", "level of education", "education level", "highest degree",
+      "highest level of education", "degree level", "qualification"
+    ],
     section: "education",
     path: "education[0].degree"
   },
   {
     id: "fieldOfStudy",
-    names: [["major"], ["field", "of", "study"], ["discipline"], ["specialization"], ["concentration"]],
-    keywords: ["major", "field of study", "area of study", "discipline", "concentration", "specialization"],
+    names: [["major"], ["field", "of", "study"], ["discipline"], ["specialization"], ["specialisation"], ["concentration"]],
+    keywords: ["major", "field of study", "area of study", "discipline", "concentration", "specialization", "specialisation"],
     section: "education",
     path: "education[0].fieldOfStudy"
   },
@@ -289,9 +312,62 @@ export const RULES = [
     id: "jobTitle",
     names: [["job", "title"], ["title"], ["position"], ["role"], ["designation"], ["current", "title"]],
     keywords: ["job title", "title", "position", "role", "current title", "current position", "designation"],
-    negatives: ["degree", "school", "university", "name", "job posting", "applying", "desired", "requisition"],
+    negatives: ["degree", "school", "university", "name", "job posting", "applying", "desired", "requisition", "salutation", "prefix", "honorific", "mr", "mrs", "ms"],
     section: "experience",
+    indexable: true,
     path: "experience[0].title"
+  },
+  {
+    id: "experienceLocation",
+    names: [["company", "location"], ["job", "location"], ["employer", "location"], ["work", "location"]],
+    keywords: ["company location", "employer location", "job location", "work location", "office location"],
+    negatives: ["school", "university", "college", "home", "current location", "residence"],
+    section: "experience",
+    indexable: true,
+    path: "experience[0].location"
+  },
+  {
+    id: "experienceStartDate",
+    names: [["start", "date"], ["from"], ["date", "started"], ["from", "date"], ["start", "month"], ["start", "year"]],
+    keywords: ["start date", "from", "date started", "employment start", "start month", "start year"],
+    negatives: ["school", "university", "education", "available", "earliest", "notice", "to", "end"],
+    section: "experience",
+    isDate: true,
+    indexable: true,
+    path: "experience[0].startDate"
+  },
+  {
+    id: "experienceEndDate",
+    names: [["end", "date"], ["to"], ["date", "ended"], ["to", "date"], ["end", "month"], ["end", "year"], ["completion", "date"]],
+    keywords: ["end date", "to", "date ended", "employment end", "end month", "end year", "until"],
+    negatives: ["school", "university", "education", "graduation", "from", "start"],
+    section: "experience",
+    isDate: true,
+    indexable: true,
+    path: "experience[0].endDate"
+  },
+  {
+    id: "currentJob",
+    names: [["current"], ["current", "job"], ["currently", "work"], ["present"], ["current", "role"]],
+    keywords: [
+      "i currently work here", "currently work here", "current employer", "current job",
+      "current role", "present employer", "i currently work in this role", "is this your current job"
+    ],
+    section: "experience",
+    indexable: true,
+    path: "experience[0].current"
+  },
+  {
+    id: "experienceDescription",
+    names: [["description"], ["responsibilities"], ["duties"], ["summary"], ["role", "description"], ["work", "summary"]],
+    keywords: [
+      "description", "responsibilities", "role description", "summary of duties",
+      "work description", "key responsibilities", "duties", "job description"
+    ],
+    negatives: ["company", "employer", "school", "project", "education"],
+    section: "experience",
+    indexable: true,
+    path: "experience[0].description"
   },
 
   // ─── Free text ───
@@ -324,12 +400,12 @@ export const RULES = [
   {
     id: "startDate",
     autocomplete: [],
-    names: [["start", "date"], ["availability"], ["earliest", "start"], ["available", "date"], ["notice", "period"]],
+    names: [["start", "date"], ["availability"], ["earliest", "start"], ["available", "date"]],
     keywords: [
       "start date", "earliest start", "available to start", "availability",
-      "when can you start", "notice period"
+      "when can you start"
     ],
-    negatives: ["school", "university", "education", "employment start", "previous"],
+    negatives: ["school", "university", "education", "employment start", "previous", "notice period", "notice"],
     path: "customFields.startDate"
   },
   {
@@ -341,7 +417,10 @@ export const RULES = [
   {
     id: "referral",
     names: [["referral"], ["referred", "by"], ["source"], ["how", "did", "you", "hear"]],
-    keywords: ["referral", "referred by", "how did you hear", "hear about us", "how did you find"],
+    keywords: [
+      "referral", "referred by", "how did you hear", "hear about us", "how did you find",
+      "how did you hear about this opportunity", "job board", "source"
+    ],
     path: "customFields.referral"
   },
   {
@@ -349,6 +428,193 @@ export const RULES = [
     names: [["pronouns"], ["preferred", "pronouns"]],
     keywords: ["pronouns", "preferred pronouns"],
     path: "customFields.pronouns"
+  },
+  {
+    id: "phoneType",
+    names: [["phone", "type"], ["phone", "device", "type"], ["device", "type"]],
+    keywords: ["phone type", "phone device type", "device type", "type of phone"],
+    path: "customFields.phoneType",
+    fallback: () => "Mobile"
+  },
+  {
+    id: "willingToRelocate",
+    names: [["relocate"], ["willing", "relocate"], ["relocation"], ["open", "relocation"]],
+    keywords: ["willing to relocate", "relocate", "relocation", "open to relocation", "are you willing to relocate"],
+    path: "customFields.willingToRelocate",
+    fallback: () => "Yes"
+  },
+  {
+    id: "workLocationPreference",
+    names: [["workplace", "type"], ["remote"], ["hybrid"], ["work", "location"], ["work", "model"]],
+    keywords: ["workplace preference", "work location preference", "remote/hybrid", "work model", "work arrangement"],
+    path: "customFields.workLocationPreference"
+  },
+  {
+    id: "legalAge",
+    names: [["legal", "age"], ["18", "older"], ["over", "18"], ["age", "18"]],
+    keywords: ["are you 18", "18 years of age or older", "18 or older", "at least 18", "legal age to work", "are you at least 18"],
+    path: "customFields.legalAge",
+    fallback: () => "Yes"
+  },
+  {
+    id: "formerEmployee",
+    names: [["former", "employee"], ["previously", "employed"], ["worked", "before"], ["prior", "employee"]],
+    keywords: ["previously employed", "former employee", "have you worked here", "worked for us before", "have you ever worked for", "prior employee"],
+    path: "customFields.formerEmployee",
+    fallback: () => "No"
+  },
+  {
+    id: "relativeEmployed",
+    names: [["relatives"], ["family", "employed"], ["conflict", "interest"]],
+    keywords: ["relatives", "family member", "any relatives", "family employed", "conflict of interest"],
+    path: "customFields.relativeEmployed",
+    fallback: () => "No"
+  },
+  {
+    id: "noticePeriod",
+    names: [["notice", "period"], ["days", "notice"], ["how", "soon", "start"]],
+    keywords: ["notice period", "days notice", "how much notice", "official notice period", "how soon can you start"],
+    path: "customFields.noticePeriod",
+    fallback: (p) => p.customFields?.noticePeriod || p.customFields?.startDate || "Immediately"
+  },
+  {
+    id: "twitter",
+    names: [["twitter"], ["twitter", "url"], ["x", "profile"], ["x", "com"]],
+    keywords: ["twitter", "twitter profile", "twitter url", "x profile"],
+    path: "personal.twitter",
+    fallback: (p) => p.customFields?.twitter || null,
+    multi: true
+  },
+  {
+    id: "citizenship",
+    names: [["citizenship"], ["country", "citizenship"], ["primary", "citizenship"]],
+    keywords: ["citizenship", "country of citizenship", "primary citizenship", "citizen of"],
+    path: "customFields.citizenship",
+    fallback: (p) => p.personal?.country || null
+  },
+  {
+    id: "currentSalary",
+    names: [["current", "salary"], ["current", "ctc"], ["current", "compensation"]],
+    keywords: ["current salary", "current ctc", "current compensation", "present salary"],
+    path: "customFields.currentSalary"
+  },
+  {
+    id: "salutation",
+    names: [["salutation"], ["prefix"], ["title"], ["honorific"]],
+    keywords: ["salutation", "prefix", "personal title", "honorific", "mr/ms/mrs"],
+    negatives: ["job", "position", "current", "company", "degree", "school", "posting", "role"],
+    path: "customFields.salutation",
+    fallback: () => "Mr."
+  },
+  {
+    id: "consent",
+    names: [["consent"], ["certify"], ["terms"], ["privacy"], ["acknowledgment"], ["declaration"], ["agreement"], ["attestation"]],
+    keywords: [
+      "i certify", "i agree", "consent", "terms and conditions", "privacy policy", "data privacy",
+      "acknowledge and agree", "i acknowledge", "certify that the information", "accurate and complete",
+      "terms of use", "declaration", "attestation", "applicant statement", "electronic signature agreement"
+    ],
+    path: "customFields.consent",
+    fallback: () => "Yes"
+  },
+  {
+    id: "backgroundCheck",
+    names: [["background", "check"], ["background", "screening"], ["screening", "consent"], ["drug", "test"], ["drug", "screening"]],
+    keywords: [
+      "background check", "background screening", "willing to undergo a background check",
+      "pre-employment background check", "drug screening", "drug test", "background investigation"
+    ],
+    path: "customFields.backgroundCheck",
+    fallback: () => "Yes"
+  },
+  {
+    id: "travelPreference",
+    names: [["travel"], ["willing", "travel"], ["travel", "percentage"], ["travel", "requirement"]],
+    keywords: [
+      "willing to travel", "travel requirement", "travel percentage", "travel willingness", "open to travel"
+    ],
+    path: "customFields.travelPreference",
+    fallback: () => "Yes"
+  },
+  {
+    id: "driversLicense",
+    names: [["driver", "license"], ["drivers", "license"], ["driving", "license"]],
+    keywords: ["driver's license", "drivers license", "valid driver's license", "driving license"],
+    path: "customFields.driversLicense",
+    fallback: () => "Yes"
+  },
+  {
+    id: "securityClearance",
+    names: [["security", "clearance"], ["clearance"], ["clearance", "level"]],
+    keywords: ["security clearance", "clearance level", "active security clearance", "possess a security clearance"],
+    path: "customFields.securityClearance",
+    fallback: () => "No"
+  },
+  {
+    id: "signature",
+    names: [["signature"], ["electronic", "signature"], ["applicant", "signature"], ["sign", "name"], ["e", "signature"], ["digital", "signature"]],
+    keywords: [
+      "electronic signature", "signature", "applicant signature", "sign your name",
+      "type your full legal name", "type your full name", "type your name",
+      "typed signature", "digital signature", "please sign", "signature of applicant"
+    ],
+    negatives: ["date", "time", "day", "month", "year"],
+    path: "personal.fullName",
+    fallback: (p) => (p.personal?.fullName || `${p.personal?.firstName || ""} ${p.personal?.lastName || ""}`.trim()) || null
+  },
+  {
+    id: "signatureDate",
+    names: [["signature", "date"], ["date", "signed"], ["today", "date"], ["current", "date"], ["agreement", "date"]],
+    keywords: ["signature date", "date signed", "date of signature", "today's date", "todays date", "current date"],
+    path: "customFields.signatureDate",
+    fallback: () => new Date().toISOString().split("T")[0],
+    isDate: true
+  },
+  {
+    id: "nonCompete",
+    names: [["non", "compete"], ["restrictive", "covenant"], ["non", "disclosure", "agreement"], ["noncompete"]],
+    keywords: [
+      "non-compete", "non compete", "restrictive covenant", "non-compete agreement",
+      "subject to a non-compete", "bound by any non-compete", "restrictive covenants"
+    ],
+    path: "customFields.nonCompete",
+    fallback: () => "No"
+  },
+  {
+    id: "governmentOfficial",
+    names: [["government", "official"], ["public", "official"], ["politically", "exposed"]],
+    keywords: ["government official", "public official", "are you a government official", "related to a government official"],
+    path: "customFields.governmentOfficial",
+    fallback: () => "No"
+  },
+  {
+    id: "reliableTransportation",
+    names: [["transportation"], ["reliable", "transportation"], ["valid", "transportation"]],
+    keywords: ["reliable transportation", "access to reliable transportation", "reliable means of transportation"],
+    path: "customFields.reliableTransportation",
+    fallback: () => "Yes"
+  },
+  {
+    id: "criminalRecord",
+    names: [["felony"], ["criminal", "conviction"], ["convicted"]],
+    keywords: ["convicted of a felony", "criminal conviction", "have you ever been convicted", "felony conviction"],
+    path: "customFields.criminalRecord",
+    fallback: () => "No"
+  },
+  {
+    id: "suffix",
+    names: [["suffix"], ["name", "suffix"]],
+    keywords: ["suffix", "name suffix", "generation suffix", "jr/sr"],
+    negatives: ["first", "last", "middle"],
+    path: "personal.suffix",
+    fallback: (p) => p.customFields?.suffix || null
+  },
+  {
+    id: "county",
+    names: [["county"], ["district"], ["parish"]],
+    keywords: ["county", "parish"],
+    negatives: ["country"],
+    path: "customFields.county"
   },
 
   // ─── Sensitive / EEO ───
@@ -366,6 +632,13 @@ export const RULES = [
     names: [["race"], ["ethnicity"], ["ethnic", "background"], ["racial"]],
     keywords: ["race", "ethnicity", "ethnic background", "race/ethnicity"],
     path: "customFields.ethnicity",
+    sensitive: true
+  },
+  {
+    id: "hispanicLatino",
+    names: [["hispanic"], ["latino"], ["hispanic", "latino"]],
+    keywords: ["are you hispanic or latino", "hispanic or latino", "hispanic/latino", "hispanic origin"],
+    path: "customFields.hispanicLatino",
     sensitive: true
   },
   {
@@ -397,7 +670,7 @@ for (const r of RULES) r.indexable = /\[0\]/.test(r.path || "");
  * should inform the same question on the next.
  */
 export function fieldKey(field) {
-  return normalizeKey(field.label || field.name || field.id || "");
+  return contextualKey(field);
 }
 
 /**
@@ -409,7 +682,7 @@ export function fieldKey(field) {
  * Address" are the same question and must produce the same key.
  */
 export function normalizeKey(s) {
-  return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 60);
+  return canonicalQuestion(s);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -423,12 +696,21 @@ export const ATS_BY_NAME = {
   // Greenhouse
   "job_application[first_name]": "firstName",
   "job_application[last_name]": "lastName",
+  "job_application[preferred_name]": "preferredName",
   "job_application[email]": "email",
   "job_application[phone]": "phone",
+  "job_application[location]": "location",
+  "job_application[address_line_2]": "addressLine2",
   "job_application[urls][LinkedIn]": "linkedin",
   "job_application[urls][GitHub]": "github",
   "job_application[urls][Portfolio]": "website",
   "job_application[urls][Website]": "website",
+  "job_application[urls][Twitter]": "twitter",
+  "job_application[urls][Other]": "website",
+  "job_application[gender]": "gender",
+  "job_application[race]": "ethnicity",
+  "job_application[veteran_status]": "veteranStatus",
+  "job_application[disability_status]": "disabilityStatus",
   first_name: "firstName",
   last_name: "lastName",
 
@@ -441,7 +723,10 @@ export const ATS_BY_NAME = {
   "urls[Github]": "github",
   "urls[GitHub]": "github",
   "urls[Portfolio]": "website",
+  "urls[Twitter]": "twitter",
   "urls[Other]": "website",
+  comments: "summary",
+  additional_information: "summary",
 
   // Workable
   firstname: "firstName",
@@ -452,7 +737,25 @@ export const ATS_BY_NAME = {
   firstName: "firstName",
   lastName: "lastName",
   phoneNumber: "phone",
-  emailAddress: "email"
+  emailAddress: "email",
+  title: "salutation",
+  salutation: "salutation",
+  consent: "consent",
+  terms: "consent",
+  background_check: "backgroundCheck",
+  "job_application[signature]": "signature",
+  "job_application[e_signature]": "signature",
+  "job_application[signature_date]": "signatureDate",
+  "job_application[date]": "signatureDate",
+  signature: "signature",
+  e_signature: "signature",
+  electronic_signature: "signature",
+  signature_date: "signatureDate",
+  non_compete: "nonCompete",
+  hispanic_latino: "hispanicLatino",
+  "job_application[job_title]": "jobTitle",
+  "job_application[company_name]": "company",
+  reliable_transportation: "reliableTransportation"
 };
 
 export const ATS_BY_ID = {
@@ -461,11 +764,26 @@ export const ATS_BY_ID = {
   last_name: "lastName",
   email: "email",
   phone: "phone",
+  signature: "signature",
+  electronic_signature: "signature",
+  e_signature: "signature",
 
   // Ashby
   _systemfield_name: "fullName",
+  _systemfield_preferred_name: "preferredName",
   _systemfield_email: "email",
   _systemfield_phone: "phone",
+  _systemfield_company: "company",
+  _systemfield_title: "jobTitle",
+  _systemfield_location: "location",
+  _systemfield_address: "addressLine1",
+  _systemfield_city: "city",
+  _systemfield_postal_code: "postalCode",
+  _systemfield_country: "country",
+  _systemfield_linkedin: "linkedin",
+  _systemfield_github: "github",
+  _systemfield_portfolio: "website",
+  _systemfield_website: "website",
 
   // Taleo / iCIMS
   quickApplyFirstName: "firstName",
@@ -475,19 +793,84 @@ export const ATS_BY_ID = {
 
 // Workday — data-automation-id
 export const ATS_BY_AUTOMATION_ID = {
+  legalNameSection_title: "salutation",
   legalNameSection_firstName: "firstName",
   legalNameSection_lastName: "lastName",
   legalNameSection_middleName: "middleName",
+  legalNameSection_preferredName: "preferredName",
+  legalNameSection_suffix: "suffix",
   email: "email",
   "phone-number": "phone",
   phoneNumber: "phone",
+  phoneDeviceType: "phoneType",
+  "phone-device-type": "phoneType",
   addressSection_addressLine1: "addressLine1",
+  addressSection_addressLine2: "addressLine2",
   addressSection_city: "city",
   addressSection_countryRegion: "country",
   addressSection_postalCode: "postalCode",
+  addressSection_county: "county",
   addressSection_regionSubdivision1: "state",
   "source--source": "referral",
-  formField_sourcePrompt: "referral"
+  formField_sourcePrompt: "referral",
+  yearsOfExperience: "yearsOfExperience",
+  workAuthorization: "authorizedToWork",
+  legallyAuthorized: "authorizedToWork",
+  candidateWorkAuthorization: "authorizedToWork",
+  visaSponsorship: "sponsorship",
+  requireSponsorship: "sponsorship",
+  immigrationSponsorship: "sponsorship",
+  citizenshipStatus: "citizenship",
+  school: "university",
+  degree: "degree",
+  fieldOfStudy: "fieldOfStudy",
+  gpa: "gpa",
+  company: "company",
+  jobTitle: "jobTitle",
+  startDate: "startDate",
+  jobHistoryItem_company: "company",
+  jobHistoryItem_title: "jobTitle",
+  jobHistoryItem_jobTitle: "jobTitle",
+  jobHistoryItem_location: "experienceLocation",
+  jobHistoryItem_startDate: "experienceStartDate",
+  jobHistoryItem_endDate: "experienceEndDate",
+  jobHistoryItem_currentlyWorkHere: "currentJob",
+  jobHistoryItem_roleDescription: "experienceDescription",
+  jobHistory_company: "company",
+  jobHistory_title: "jobTitle",
+  jobHistory_location: "experienceLocation",
+  jobHistory_startDate: "experienceStartDate",
+  jobHistory_endDate: "experienceEndDate",
+  jobHistory_currentlyWorkHere: "currentJob",
+  jobHistory_roleDescription: "experienceDescription",
+  educationItem_school: "university",
+  educationItem_degree: "degree",
+  educationItem_fieldOfStudy: "fieldOfStudy",
+  educationItem_startDate: "educationStartDate",
+  educationItem_endDate: "graduationDate",
+  educationItem_gpa: "gpa",
+  education_school: "university",
+  education_degree: "degree",
+  education_fieldOfStudy: "fieldOfStudy",
+  education_startDate: "educationStartDate",
+  education_endDate: "graduationDate",
+  education_gpa: "gpa",
+  noticePeriod: "noticePeriod",
+  willingToRelocate: "willingToRelocate",
+  backgroundCheck: "backgroundCheck",
+  termsAndConditions: "consent",
+  electronicSignature: "signature",
+  candidateSignature: "signature",
+  signature_name: "signature",
+  signature: "signature",
+  dateSigned: "signatureDate",
+  date_signed: "signatureDate",
+  nonCompeteAgreement: "nonCompete",
+  restrictiveCovenant: "nonCompete",
+  governmentOfficial: "governmentOfficial",
+  reliableTransportation: "reliableTransportation",
+  hispanicLatino: "hispanicLatino",
+  hispanicOrLatino: "hispanicLatino"
 };
 
 /** File inputs that should receive the resume. */
@@ -734,7 +1117,8 @@ export function assign(fields, opts = {}) {
     const field = fields[fi];
     if (field.skip) continue;
 
-    for (const rule of RULES) {
+      for (const rule of RULES) {
+        if (opts.canMap && !opts.canMap(field, rule)) continue;
       if (rule.sensitive && opts.skipSensitive && !opts.hasAnswerFor?.(rule.id)) continue;
 
       let score = scoreField(rule, field);

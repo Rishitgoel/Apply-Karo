@@ -139,6 +139,28 @@ const FRAMES = {
   check("waits for the slow frame that holds the form", merged.filled, 20);
 }
 
+// ── A frame that is slow to put its hand up ──────────────────────────────────
+//
+// The acknowledgement decides whether a frame exists at all. One that arrives
+// after the window has closed belongs to a run that has already resolved and
+// been deleted, so the frame fills the form and its result goes nowhere — the
+// panel reports the top frame's zero over a form it just filled.
+{
+  const { fanOut } = loadCoordinator({
+    frames: FRAMES.embedded,
+    ackDelay: 200,             // the window in this harness is 60ms
+    resultDelay: () => 300     // a frame always acks before it reports
+  });
+  const results = await fanOut(1, "rf_fill");
+  check("a frame that acks too late is lost", results.length, 0);
+
+  // Which is why the real window is not measured in a few hundred milliseconds.
+  // The frame most likely to be slow is the embedded board — mid-hydration,
+  // main thread blocked — and it is also the only frame that has the form.
+  check("the shipped ack window allows for a busy frame",
+    Number(SRC.match(/FRAME_ACK_MS = (\d+)/)?.[1]) >= 1500, true);
+}
+
 // ── No engine anywhere ───────────────────────────────────────────────────────
 {
   const { fanOut } = loadCoordinator({ frames: FRAMES.none });

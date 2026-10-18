@@ -13,6 +13,7 @@
 import { ICONS } from "../shared/icons.js";
 import { resolveTheme } from "../shared/theme.js";
 import { feedbackMailto } from "../shared/contact.js";
+import { extensionAlive, isContextGone, STALE_MESSAGE } from "../shared/schema.js";
 
 const HOST_ID = "applykaro-root";
 
@@ -200,7 +201,7 @@ kbd{font:inherit;font-size:9.5px;padding:1px 5px;border-radius:4px;
 const DEFAULT_POS = { right: 16, bottom: 16 };
 
 export function mount({
-  onFill, onFillSteps, onUndo, onHighlight, onCoverLetter, onMatch,
+  onFill, onFillSteps, onUndo, onHighlight, onReview, onReviewAction, onCoverLetter, onMatch,
   onPriorApplications, onDisableSite, onMove, canUndo, getContext, reload
 }) {
   if (document.getElementById(HOST_ID)) return null;
@@ -233,7 +234,7 @@ export function mount({
           <button class="act" data-undo title="Put every field this filled back the way it was">
             ${ICONS.undo}Undo</button>
         </div>
-        <button class="act" data-review>${ICONS.search}Highlight what's still empty</button>
+        <button class="act" data-review>${ICONS.search}Review answers and missing fields</button>
         <button class="act" data-match>${ICONS.target}Match me against this job</button>
         <button class="act" data-letter>${ICONS.sparkle}Draft a cover letter</button>
 
@@ -279,6 +280,56 @@ export function mount({
   const dupe = $("[data-dupe]");
   const trail = $("[data-trail]");
   const more = $("[data-more]");
+  const review = document.createElement("div"); review.hidden = true; review.dataset.reviewList = "";
+  review.style.cssText = "max-height:55vh;overflow:auto;padding:12px;overflow-wrap:anywhere";
+  $(".body").appendChild(review);
+  const node = (tag, text) => { const n = document.createElement(tag); n.textContent = text; return n; };
+  const actionButton = (label, action) => {
+    const b = node("button", label); b.type = "button"; b.className = "act";
+    b.addEventListener("click", async () => { b.disabled = true; try { await action(); } catch (e) { setStatus(e.message, "bad"); } finally { b.disabled = false; } }); return b;
+  };
+  async function openReview() {
+    card.classList.add("open");
+    review.hidden = false; review.replaceChildren();
+    const rows = await onReview();
+    setStatus(`${rows.filter(r => r.group === "Verified facts").length} verified · ${rows.filter(r => r.group === "Drafts to review").length} drafts · ${rows.filter(r => r.group === "Missing facts").length} missing · ${rows.filter(r => r.group === "Could not fill").length} could not fill.`, "");
+    const selected = [];
+    review.append(node("p", "Review answers, then submit the application yourself."));
+    review.append(actionButton("Set common facts once", () => chrome.runtime.sendMessage({ type: "open_options", tab: "tab-learned" })));
+    const includeAnswers = document.createElement("input"), includeQuestions = document.createElement("input"); includeAnswers.type = includeQuestions.type = "checkbox";
+    const answerLabel = node("label", " Include answers in issue report "); answerLabel.prepend(includeAnswers);
+    const questionLabel = node("label", " Include question text "); questionLabel.prepend(includeQuestions);
+    review.append(answerLabel, questionLabel, actionButton("Export issue report", async () => {
+      const { redactReview } = await import(chrome.runtime.getURL("src/engine/review.js"));
+      const url = URL.createObjectURL(new Blob([JSON.stringify({ version: 1, fields: redactReview(rows, includeAnswers.checked, includeQuestions.checked) }, null, 2)], { type: "application/json" }));
+      const link = document.createElement("a"); link.href = url; link.download = "apply-karo-review.json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }));
+    for (const group of ["Verified facts", "Drafts to review", "Missing facts", "Could not fill"]) {
+      const entries = rows.filter(r => r.group === group); review.append(node("h3", `${group} (${entries.length})`));
+      for (const row of entries) {
+        const box = node("div", ""); box.style.cssText = "border-top:1px solid #8885;padding:8px 0";
+        box.append(actionButton(row.question + (row.required ? " *" : ""), () => onReviewAction(row, "focus")),
+          node("p", `Source: ${typeof row.source === "string" ? row.source : JSON.stringify(row.source)}`),
+          node("p", `${String(row.reason || "").replace(/_/g, " ")}${row.transformations.length ? " · " + row.transformations.join(", ").replace(/_/g, " ") : ""}`));
+        const input = document.createElement("textarea"); input.value = row.answer || ""; input.setAttribute("aria-label", `Answer: ${row.question}`); input.style.cssText = "width:100%;box-sizing:border-box;min-height:50px";
+        input.disabled = !row.editable; box.append(input);
+        if (row.editable) {
+          const pick = document.createElement("input"); pick.type = "checkbox"; const label = node("label", " Reviewed; include in batch confirmation"); label.prepend(pick); box.append(label); selected.push({ row, input, pick });
+          const apply = async scope => {
+            const dependents = group === "Missing facts" ? rows.filter(r => r.editable && r.group === "Missing facts" && r.missingKey === row.missingKey) : [row];
+            for (const dependent of dependents) await onReviewAction(dependent, "confirm", input.value, scope);
+            await openReview();
+          };
+          box.append(actionButton("Use for this application", () => apply("application")), actionButton("Remember for similar questions", () => apply("similar")), actionButton("Wrong field mapping", async () => { await onReviewAction(row, "mapping-repair"); setStatus("Mapping marked incorrect. Review and replace the answer.", "warn"); }), actionButton("Undo this field", async () => { await onReviewAction(row, "undo"); await openReview(); }));
+        }
+        review.append(box);
+      }
+    }
+    review.append(actionButton("Confirm selected answers", async () => {
+      const choices = selected.filter(c => c.pick.checked); if (!choices.length) throw new Error("Select the answers you have reviewed.");
+      for (const c of choices) await onReviewAction(c.row, "confirm", c.input.value, "application"); await openReview();
+    }), actionButton("Refresh review", openReview));
+  }
 
   $("[data-host]").textContent = location.hostname.replace(/^www\./, "");
 
@@ -377,20 +428,77 @@ export function mount({
   const busyButtons = [fillBtn, stepsBtn, letterBtn, matchBtn, undoBtn];
   const lock = (on) => busyButtons.forEach((b) => { b.disabled = on; });
 
+  /**
+   * Has this page outlived the extension that put the panel on it?
+   *
+   * Reloading an unpacked build — which is what you do after every edit — cuts
+   * every open tab off from storage and from the service worker. The panel is
+   * still on screen and its buttons still look live, but nothing behind them
+   * exists: the fill reaches no worker, the status read rejects, and the only
+   * clue was an uncaught "Extension context invalidated" in the console. So
+   * every action asks first, and the answer is a sentence that says what to do
+   * rather than a stack trace.
+   */
+  function alive() {
+    if (extensionAlive()) return true;
+    lock(true);
+    setStatus(STALE_MESSAGE, "warn");
+    return false;
+  }
+
+  /** The same message, for an action that was already in flight when it died. */
+  const failure = (err) => (isContextGone(err) ? STALE_MESSAGE : err.message);
+
+  /**
+   * What to say after a fill, as [text, tone].
+   *
+   * The old version had one branch for "filled nothing" and it read "Nothing
+   * left to fill here." That sentence was only ever true by accident: a fill
+   * ends with nothing filled far more often because the AI could not answer —
+   * a spent API quota, a key that was never added, the feature switched off —
+   * than because the form is complete. Reporting a failure as completeness is
+   * how someone submits a half-empty application believing the extension had
+   * checked it. So the count of fields still empty decides the wording, and
+   * whatever the AI reported is always passed on rather than swallowed.
+   */
+  function fillOutcome(r) {
+    const left = Number(r.empty || 0);
+    const done = Number(r.filled || 0);
+    // Fields the filler cannot see at all. Reported separately because no amount
+    // of pressing Fill again will touch them, and saying so is the difference
+    // between a bug someone can report and an extension that looks lazy.
+    const blind = Number(r.unseen || 0)
+      ? ` ${r.unseen} of them I can't see at all — the page console has the details.`
+      : "";
+
+    if (r.aiError) {
+      const head = done ? `Filled ${done} of ${r.total}.` : "The rules filled nothing new.";
+      const tail = left ? ` ${left} field(s) still empty.` : "";
+      return [`${head}${tail}${blind} ${r.aiError}`, "warn"];
+    }
+    if (done) {
+      const tail = left ? ` ${left} still empty.${blind}` : "";
+      return [`Filled ${done} of ${r.total} fields.${tail} Amber outlines are guesses worth checking.`, "good"];
+    }
+    if (!r.total) return ["No form fields found on this page.", "warn"];
+    if (left) {
+      return [`Nothing here I could answer — ${left} field(s) are still empty.${blind} ` +
+              `"Highlight what's still empty" will show you which.`, "warn"];
+    }
+    return ["Every field on this page already has a value.", "good"];
+  }
+
   // ── Actions ──────────────────────────────────────────────────────────────
   fillBtn.addEventListener("click", async () => {
+    if (!alive()) return;
     lock(true);
     setStatus("Filling…", "", true);
     try {
       const r = await onFill((msg) => setStatus(msg, "", true));
       setCount(r.filled);
-      if (r.filled) {
-        setStatus(`Filled ${r.filled} of ${r.total} fields. Amber outlines are guesses worth checking.`, "good");
-      } else {
-        setStatus(r.total ? "Nothing left to fill here." : "No form fields found on this page.", "warn");
-      }
+      setStatus(...fillOutcome(r));
     } catch (err) {
-      setStatus(`Couldn't fill: ${err.message}`, "bad");
+      setStatus(`Couldn't fill: ${failure(err)}`, "bad");
     } finally {
       lock(false);
       syncUndo();
@@ -398,6 +506,7 @@ export function mount({
   });
 
   stepsBtn.addEventListener("click", async () => {
+    if (!alive()) return;
     lock(true);
     setStatus("Working through the steps…", "", true);
     trail.hidden = false;
@@ -410,7 +519,7 @@ export function mount({
       trail.textContent = r.trail.join("\n");
       setStatus(`Filled ${r.filled} across ${r.steps + 1} step(s). Review, then submit yourself.`, "good");
     } catch (err) {
-      setStatus(`Stopped: ${err.message}`, "bad");
+      setStatus(`Stopped: ${failure(err)}`, "bad");
       trail.textContent = "";
       trail.hidden = true;
     } finally {
@@ -422,6 +531,7 @@ export function mount({
   // Both of these now cover every frame of the tab, so both are asynchronous —
   // the frames holding the form answer through the service worker.
   undoBtn.addEventListener("click", async () => {
+    if (!alive()) return;
     const n = await onUndo();
     setCount(0);
     setStatus(n ? `Put ${n} field(s) back the way they were.` : "Nothing to undo.", n ? "good" : "warn");
@@ -429,27 +539,35 @@ export function mount({
   });
 
   $("[data-review]").addEventListener("click", async () => {
-    const { count, required } = await onHighlight();
-    // The required count is the one that decides whether the form will submit,
-    // so it leads when there is one.
-    const detail = required ? `${count} still empty, ${required} of them required` : `${count} field(s) still empty`;
-    setStatus(count ? `${detail}, outlined in red.` : "Every visible field has a value.",
-              required ? "bad" : count ? "warn" : "good");
+    if (!alive()) return;
+    try { await onHighlight(); await openReview(); } catch (e) { setStatus(e.message, "bad"); }
   });
 
+  /**
+   * Which posting an answer was built from, when that is not this page.
+   *
+   * Worth a sentence rather than silence: the description usually comes from the
+   * listing page you captured two clicks ago, and a letter about a job you did
+   * not mean is the one failure here that is expensive to notice late.
+   */
+  const fromNote = (via) => (via?.source === "saved"
+    ? ` Built from the posting you captured${via.company ? ` at ${via.company}` : ""}.`
+    : "");
+
   letterBtn.addEventListener("click", async () => {
+    if (!alive()) return;
     lock(true);
     setStatus("Drafting a cover letter…", "", true);
     try {
-      const { text, placed } = await onCoverLetter((m) => setStatus(m, "", true));
+      const { text, placed, via } = await onCoverLetter((m) => setStatus(m, "", true));
       if (placed) {
-        setStatus("Cover letter drafted into the form. Read it before you send it.", "good");
+        setStatus(`Cover letter drafted into the form. Read it before you send it.${fromNote(via)}`, "good");
       } else {
         await navigator.clipboard.writeText(text).catch(() => {});
-        setStatus("No cover-letter box here, so the draft is on your clipboard.", "good");
+        setStatus(`No cover-letter box here, so the draft is on your clipboard.${fromNote(via)}`, "good");
       }
     } catch (err) {
-      setStatus(err.message, "bad");
+      setStatus(failure(err), "bad");
     } finally {
       lock(false);
       syncUndo();
@@ -495,15 +613,16 @@ export function mount({
   }
 
   matchBtn.addEventListener("click", async () => {
+    if (!alive()) return;
     lock(true);
     setStatus("Comparing you against this posting…", "", true);
     try {
       const m = await onMatch((msg) => setStatus(msg, "", true));
       renderMatch(m);
       const tone = m.verdict === "strong" ? "good" : m.verdict === "weak" ? "bad" : "warn";
-      setStatus(`${m.score}% match — ${m.meets.length} met, ${m.gaps.length} missing.`, tone);
+      setStatus(`${m.score}% match — ${m.meets.length} met, ${m.gaps.length} missing.${fromNote(m.via)}`, tone);
     } catch (err) {
-      setStatus(err.message, "bad");
+      setStatus(failure(err), "bad");
     } finally {
       lock(false);
     }
@@ -544,7 +663,19 @@ export function mount({
 
   async function refreshStatus() {
     paint();
-    await reload();
+    // Opening the card is the first thing anyone does, and it is the first
+    // thing that touches storage — so on a page the extension has been reloaded
+    // out from under, this is where the failure surfaces. It used to surface as
+    // an uncaught rejection: the card opened, the status line kept whatever it
+    // last said, and nothing indicated that the panel was now decorative.
+    if (!alive()) return;
+    try {
+      await reload();
+    } catch (err) {
+      setStatus(failure(err), isContextGone(err) ? "warn" : "bad");
+      if (isContextGone(err)) lock(true);
+      return;
+    }
     const ctx = getContext();
     const missing = [];
     if (!ctx.profile.personal.email) missing.push("no profile yet");
@@ -555,11 +686,11 @@ export function mount({
     else setStatus("Ready. AI will answer anything the rules can't.", "good");
 
     // Both of these spend a model call, so both need a key. The letter also
-    // runs when AI autofill is off — having a key is the real precondition.
-    const hasKey = !!(ctx.settings.provider === "groq"
-      ? ctx.settings.groqApiKey : ctx.settings.geminiApiKey);
+    const key = ctx.settings.provider === "groq"
+      ? ctx.settings.groqApiKey : ctx.settings.geminiApiKey;
+    const hasKey = !!String(key || "").trim();
 
-    letterBtn.disabled = !hasKey && !ctx.settings.aiAutofillEnabled;
+    letterBtn.disabled = !hasKey;
     letterBtn.title = letterBtn.disabled
       ? "Add an API key in the dashboard to draft cover letters"
       : "Read the posting on this page and write a letter for it";
@@ -582,6 +713,8 @@ export function mount({
 
   return {
     setCount,
+    openReview,
+    setError: (message) => setStatus(message, "bad"),
     host,
     destroy() { host.remove(); }
   };

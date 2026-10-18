@@ -1,0 +1,308 @@
+{
+  "measuredAt": "2026-10-07T05:23:48.789Z",
+  "browser": "154.0.4258.62",
+  "bundleHash": "d81efa41ffa83116663365a89171442e065773c15c5db9356a3c8585dd918468",
+  "evidenceKind": "unpacked-extension-real-indexeddb-synthetic-fixtures",
+  "results": [
+    {
+      "id": "legacy-quarantined",
+      "actual": "unverified",
+      "expected": "unverified",
+      "pass": true
+    },
+    {
+      "id": "migration-keeps-original",
+      "actual": "Legacy unsafe",
+      "expected": "Legacy unsafe",
+      "pass": true
+    },
+    {
+      "id": "migration-repeatable",
+      "actual": {
+        "at": 1791350613853,
+        "version": 1
+      },
+      "expected": {
+        "at": 1791350613853,
+        "version": 1
+      },
+      "pass": true
+    },
+    {
+      "id": "concurrent-profile-updates-commit",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "concurrent-profile-preserves-email",
+      "actual": "avery@example.invalid",
+      "expected": "avery@example.invalid",
+      "pass": true
+    },
+    {
+      "id": "concurrent-profile-preserves-phone",
+      "actual": "+1 555 0100",
+      "expected": "+1 555 0100",
+      "pass": true
+    },
+    {
+      "id": "stale-profile-update-rejected",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "authorization-requires-country",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "compensation-requires-units",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "ask-once-saves",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "authorization-country-scope",
+      "actual": {
+        "type": "country",
+        "country": "india"
+      },
+      "expected": {
+        "type": "country",
+        "country": "india"
+      },
+      "pass": true
+    },
+    {
+      "id": "resume-proposes-not-writes",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "resume-conflict-visible",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "existing-profile-preserved",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "resume-explicit-confirmation",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "confirmed-profile-projection",
+      "actual": "Jordan",
+      "expected": "Jordan",
+      "pass": true
+    },
+    {
+      "id": "confirmed-record-provenance",
+      "actual": "user-confirmed-resume",
+      "expected": "user-confirmed-resume",
+      "pass": true
+    },
+    {
+      "id": "changed-resume-rejects-confirmation",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "stale-extraction-rejected",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "concurrent-corrections-no-lost-update",
+      "actual": [
+        "College Town",
+        "Home Town"
+      ],
+      "expected": [
+        "College Town",
+        "Home Town"
+      ],
+      "pass": true
+    },
+    {
+      "id": "answers-explicit-scope-and-provenance",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "rapid-same-page-edits-preserve-latest",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "delete-answer",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "undo-answer",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "undo-restores-answer",
+      "actual": "Latest rapid edit",
+      "expected": "Latest rapid edit",
+      "pass": true
+    },
+    {
+      "id": "export-contains-records",
+      "actual": 2,
+      "expected": 2,
+      "pass": true
+    },
+    {
+      "id": "export-excludes-api-credentials",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "import-succeeds",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "imported-approvals-quarantined",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "conflicting-import-approval-rejected",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "import-review-restores-approval",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "ask-once-ui-controls",
+      "actual": 15,
+      "expected": 15,
+      "pass": true
+    },
+    {
+      "id": "dashboard-load-no-errors",
+      "actual": [],
+      "expected": [],
+      "pass": true
+    },
+    {
+      "id": "dashboard-saves-previously-empty-field",
+      "actual": "Test Street",
+      "expected": "Test Street",
+      "pass": true
+    },
+    {
+      "id": "profile-change-invalidates-answer-dependencies",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "resume-change-invalidates-evidence",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "job-context-revision-changes",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "country-fact-reuse",
+      "actual": "Yes",
+      "expected": "Yes",
+      "pass": true
+    },
+    {
+      "id": "cross-country-abstains",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "compound-polarity-abstains",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "projection-interruption-reported",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "pending-profile-projection-recovered",
+      "actual": "Recovered City",
+      "expected": "Recovered City",
+      "pass": true
+    },
+    {
+      "id": "projection-conflict-preserves-newer-profile",
+      "actual": "Newer City",
+      "expected": "Newer City",
+      "pass": true
+    },
+    {
+      "id": "projection-conflict-keeps-recoverable-values",
+      "actual": "Pending City",
+      "expected": "Pending City",
+      "pass": true
+    },
+    {
+      "id": "knowledge-survives-worker-restart",
+      "actual": 2,
+      "expected": 2,
+      "pass": true
+    },
+    {
+      "id": "migration-survives-worker-restart",
+      "actual": "Legacy unsafe",
+      "expected": "Legacy unsafe",
+      "pass": true
+    }
+  ],
+  "passed": true,
+  "limitations": [
+    "No live model or ATS acceptance",
+    "No human timing study",
+    "General resolver and custom-widget learning remain later phases"
+  ]
+}

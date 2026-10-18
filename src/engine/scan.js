@@ -18,6 +18,10 @@ import {
   tokenize, ATS_BY_NAME, ATS_BY_ID, ATS_BY_AUTOMATION_ID, FOREIGN_SECTION
 } from "../shared/rules.js";
 
+import { fullText, resolveLabels } from "./discovery/labels.js";
+import { describe } from "./discovery/descriptor.js";
+import { selectedValues } from "./controls/workday.js";
+
 const FIELD_SELECTOR = [
   "input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image])",
   "select",
@@ -37,7 +41,10 @@ const FIELD_SELECTOR = [
   // ship as one of these on plenty of modern forms, and without the role they
   // read as decorative markup — the question is simply not on the page.
   '[role="switch"]',
-  '[role="spinbutton"]'
+  '[role="spinbutton"]',
+  'button[aria-haspopup="listbox"]',
+  'button[aria-haspopup="menu"]',
+  'button[data-automation-id*="prompt"]'
 ].join(",");
 
 /** An ARIA control that stands in for a native one. */
@@ -60,7 +67,7 @@ const ARIA_ROLE = {
 const HEADING_SELECTOR = "h1,h2,h3,h4,h5,h6,legend,[role=heading]";
 const HONEYPOT = /honey-?pot|bot-?field|leave-?blank|no-?fill|do-?not-?fill|winnie|comment-?field/i;
 
-const OWN_UI = "#applykaro-root";
+const OWN_UI = "#applykaro-root, #applykaro-field-root";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shadow DOM host cache
@@ -73,6 +80,14 @@ export function invalidateShadowCache() {
   shadowDirty = true;
 }
 
+export function surfaceInventory() {
+  const roots = getRoots();
+  return { openShadowRoots: roots.length - 1,
+    frames: [...document.querySelectorAll("iframe")].map((f) => f.hasAttribute("srcdoc") ? "about:srcdoc" : f.src || "about:blank"),
+    uninspectableHosts: [...document.querySelectorAll("*")].filter((el) => !el.closest(OWN_UI) && /(?:form|input|select|application)/i.test(el.localName || "") &&
+      el.localName?.includes("-") && !el.shadowRoot && !el.querySelector(FIELD_SELECTOR)).length };
+}
+
 function collectShadowRoots() {
   const roots = [];
   const walk = (root, depth) => {
@@ -80,6 +95,7 @@ function collectShadowRoots() {
     let all;
     try { all = root.querySelectorAll("*"); } catch { return; }
     for (let i = 0; i < all.length; i++) {
+      if (all[i].closest?.(OWN_UI)) continue;
       const sr = all[i].shadowRoot;
       if (sr) { roots.push(sr); walk(sr, depth + 1); }
     }
@@ -111,25 +127,7 @@ const SKIP_TAGS = new Set([
  * return every option's text concatenated — which is exactly what a naive
  * textContent read produces, and a subtle way to poison label matching.
  */
-function textOf(el, budget = 160) {
-  if (!el) return "";
-  let out = "";
-  const walk = (node) => {
-    if (out.length >= budget) return;
-    for (let child = node.firstChild; child; child = child.nextSibling) {
-      if (out.length >= budget) return;
-      if (child.nodeType === 3) {
-        out += child.nodeValue;
-      } else if (child.nodeType === 1) {
-        if (SKIP_TAGS.has(child.tagName)) continue;
-        if (child.getAttribute && child.getAttribute("aria-hidden") === "true") continue;
-        walk(child);
-      }
-    }
-  };
-  walk(el);
-  return normalize(out);
-}
+function textOf(el) { return fullText(el); }
 
 function normalize(s) {
   return String(s || "").replace(/[\s ]+/g, " ").replace(/[*:•]+\s*$/, "").trim();
@@ -177,72 +175,243 @@ function uploadContextFor(el) {
 
 function buildLabelMap(roots) {
   const map = new Map();
+  map.roots = new Map();
   for (const root of roots) {
     let labels;
     try { labels = root.querySelectorAll("label[for]"); } catch { continue; }
+    const scoped = new Map(); map.roots.set(root, scoped);
     for (const l of labels) {
       const key = l.getAttribute("for");
-      if (key && !map.has(key)) map.set(key, l);
+      if (!key) continue;
+      if (!scoped.has(key)) scoped.set(key, []);
+      scoped.get(key).push(l);
+      if (!map.has(key)) map.set(key, l);
     }
   }
   return map;
 }
 
-function labelFor(el, labelMap) {
-  // 1. aria-label — cheapest and usually authoritative.
-  const aria = el.getAttribute("aria-label");
-  if (aria && aria.trim()) return normalize(aria);
+export const GENERIC_LABEL_RE = /^(your\s*answer|your\s*response|my\s*answer|answer(\s*here)?|short\s*answer(\s*text)?|long\s*answer(\s*text)?|(enter|type|write|fill\s*in)\s*(your\s*)?(answer|response|text)?(\s*here)?|text\s*area|text\s*box|input|text|response|required(\s*field)?|optional|question(\s*text)?|votre\s*r[eé]ponse|tu\s*respuesta|sua\s*resposta|ihre\s*antwort|la\s*tua\s*risposta)$/i;
+
+export function isGenericLabel(s) {
+  if (!s) return true;
+  const str = String(s).trim();
+  if (str.length < 2) return true;
+  return GENERIC_LABEL_RE.test(str);
+}
+
+function isFormControl(node) {
+  if (!node || node.nodeType !== 1) return false;
+  const tag = (node.tagName || "").toUpperCase();
+  if (tag === "INPUT") {
+    return (node.type || node.getAttribute?.("type") || "").toLowerCase() !== "hidden";
+  }
+  if (tag === "SELECT" || tag === "TEXTAREA") return true;
+  const role = (node.getAttribute?.("role") || "").toLowerCase();
+  if (["textbox", "combobox", "radiogroup", "checkbox", "radio", "listbox", "switch"].includes(role)) {
+    return true;
+  }
+  try {
+    const all = node.querySelectorAll?.("input, select, textarea, [role=textbox], [role=combobox], [role=radiogroup]");
+    if (all && all.length) {
+      for (const ctrl of all) {
+        if (ctrl.tagName === "INPUT" && (ctrl.type || ctrl.getAttribute?.("type") || "").toLowerCase() === "hidden") {
+          continue;
+        }
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
+export function labelFor(el, labelMap) {
+  if (!el) return "";
+  return resolveLabels(el, labelMap, fallbackLabelFor, isGenericLabel).question;
+}
+
+function fallbackLabelFor(el, labelMap) {
+  if (!el) return "";
+  if(el.matches?.('.select2-selection')) { const backing=el.closest('.select2-container')?.previousElementSibling;if(backing?.tagName==='SELECT')return /phone.*\.countryCode$/i.test(backing.name)?'Mobile Phone country code':fallbackLabelFor(backing,labelMap); }
+
+  // 1. aria-label — cheapest and usually authoritative unless it's a generic placeholder like "Your answer".
+  const aria = el.getAttribute?.("aria-label");
+  if (aria && aria.trim() && !isGenericLabel(aria)) return normalize(aria);
 
   // 2. <label for="...">
-  if (el.id) {
+  if (el.id && labelMap) {
     const l = labelMap.get(el.id);
     if (l) {
       const t = textOf(l);
-      if (t) return t;
+      if (t && !isGenericLabel(t)) return t;
     }
   }
 
-  // 3. aria-labelledby (may list several ids).
-  const by = el.getAttribute("aria-labelledby");
-  if (by) {
-    const root = el.getRootNode?.() || document;
-    let parts = "";
-    for (const id of by.split(/\s+/)) {
-      const ref = (root.getElementById?.(id)) || document.getElementById(id);
-      if (ref) parts += " " + textOf(ref, 80);
+  // 4. Dedicated Google Forms & Single-Question Item Container
+  // In Google Forms, each question item sits in [role="listitem"] / .geS5n / .Qr7Oae,
+  // and the question text is in [role="heading"], .M7eMe, or .HoN3Ob.
+  const qItem = el.closest?.(
+    '[role="listitem"], .geS5n, .Qr7Oae, [data-item-id], .freebirdFormviewerViewItemsItemItem, [class*="freebirdFormviewer" i]'
+  );
+  if (qItem) {
+    const qHeading = qItem.querySelector?.(
+      '[role="heading"], .M7eMe, .HoN3Ob, [class*="header" i] [role="heading"], ' +
+      '.freebirdFormviewerComponentsQuestionBaseTitle, [class*="questionTitle" i], [class*="question-title" i]'
+    );
+    if (qHeading && qHeading !== el && !qHeading.contains(el) && !isFormControl(qHeading)) {
+      const ht = normalize(textOf(qHeading, 250));
+      if (ht && !isGenericLabel(ht)) return ht;
     }
-    const t = normalize(parts);
-    if (t) return t;
   }
 
-  // 4. Wrapping <label>.
+  // 5. Wrapping <label>.
   const wrap = el.closest?.("label");
   if (wrap) {
     const t = textOf(wrap);
-    if (t) return t;
+    if (t && !isGenericLabel(t)) return t;
   }
 
-  // 5. Preceding sibling text, then the parent's own leading text. Covers the
-  //    very common `<div><span>Email</span><input></div>` shape.
+  // 6. Preceding sibling text in the same immediate container
   let sib = el.previousElementSibling;
   for (let i = 0; sib && i < 3; i++, sib = sib.previousElementSibling) {
+    // CRITICAL: If sibling is or contains another form control, STOP!
+    // Walking past another control reaches the previous field's label!
+    if (isFormControl(sib)) break;
     if (SKIP_TAGS.has(sib.tagName)) continue;
-    const t = textOf(sib, 100);
-    if (t && t.length < 120) return t;
-  }
-  const parent = el.parentElement;
-  if (parent) {
-    const t = textOf(parent, 120);
-    if (t && t.length < 120) return t;
+    const t = textOf(sib, 150);
+    if (t && t.length >= 2 && !isGenericLabel(t)) return t;
   }
 
-  // 6. Attributes as a last resort.
-  const ph = el.getAttribute("placeholder");
-  if (ph && ph.trim()) return normalize(ph);
-  const title = el.getAttribute("title");
-  if (title && title.trim()) return normalize(title);
+  // 7. Climbing Ancestor Containers (Scoped strictly to this field's container)
+  let curr = el;
+  for (let depth = 0; depth < 5 && curr && curr !== document.body && curr !== document.documentElement; depth++) {
+    const parent = curr.parentElement;
+    if (!parent) break;
+
+    // Count fillable controls in parent to avoid leaking across multi-field sections
+    let controlCount = 0;
+    try {
+      const ctrls = parent.querySelectorAll("input, select, textarea, [role=textbox], [role=combobox]");
+      for (const c of ctrls) {
+        if (c.tagName === "INPUT" && (c.type || c.getAttribute?.("type") || "").toLowerCase() === "hidden") continue;
+        controlCount++;
+      }
+    } catch {}
+
+    // A. Check for explicit label or heading inside parent that sits above curr
+    // ONLY do this if parent holds ONLY this control!
+    // If parent holds multiple controls, querying parent.querySelector will return the FIRST field's label!
+    if (controlCount <= 1) {
+      const directLabel = parent.querySelector?.(
+        ":scope > label, :scope > legend, :scope > [class*='label' i], " +
+        ":scope > [class*='title' i], :scope > [class*='question' i], " +
+        ":scope > [role='heading'], :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6"
+      );
+      if (directLabel && directLabel !== curr && !directLabel.contains(el) && !isFormControl(directLabel)) {
+        const t = textOf(directLabel, 200);
+        if (t && t.length >= 2 && !isGenericLabel(t)) return t;
+      }
+    }
+
+    // B. Preceding sibling of curr inside parent (e.g. <div class="header"> above <div class="body">)
+    let ps = curr.previousElementSibling;
+    for (let i = 0; ps && i < 2; i++, ps = ps.previousElementSibling) {
+      // CRITICAL: If ps contains another form control, it is the PREVIOUS question/field!
+      // Never read text from a container that holds other form controls!
+      if (isFormControl(ps)) break;
+
+      if (ps.tagName === "LABEL" || ps.matches?.(HEADING_SELECTOR) || !SKIP_TAGS.has(ps.tagName)) {
+        const t = textOf(ps, 200);
+        if (t && t.length >= 2 && !isGenericLabel(t)) return t;
+      }
+    }
+
+    // C. If parent only holds this field, check for nested heading/title in a wrapper (e.g. parent.header)
+    if (controlCount <= 1) {
+      const nestedHeading = parent.querySelector?.(
+        '[role="heading"], h1, h2, h3, h4, h5, h6, legend, ' +
+        '[class*="question" i], [class*="title" i], [class*="label" i], .M7eMe, .HoN3Ob'
+      );
+      if (nestedHeading && nestedHeading !== curr && !nestedHeading.contains(el) && !isFormControl(nestedHeading)) {
+        const t = textOf(nestedHeading, 200);
+        if (t && t.length >= 2 && !isGenericLabel(t)) return t;
+      }
+
+      // D. Parent's own text if short and single control
+      const pt = textOf(parent, 150);
+      if (pt && pt.length >= 2 && pt.length < 150 && !isGenericLabel(pt)) {
+        return pt;
+      }
+    }
+
+    // Stop climbing if parent holds multiple controls and is a form/fieldset or has >= 2 controls
+    if (controlCount > 1 && (parent.tagName === "FORM" || parent.tagName === "FIELDSET" || controlCount >= 2)) {
+      break;
+    }
+
+    curr = parent;
+  }
+
+  // 8. Attributes as a last resort.
+  const ph = el.getAttribute?.("placeholder");
+  if (ph && ph.trim() && !isGenericLabel(ph)) return normalize(ph);
+  const title = el.getAttribute?.("title");
+  if (title && title.trim() && !isGenericLabel(title)) return normalize(title);
 
   return "";
+}
+
+/**
+ * Detailed helper text, description, instructions or subtext for a control.
+ * E.g. aria-describedby references, .help-text, .form-text, .description elements.
+ */
+export function helperTextFor(el) {
+  if (!el) return "";
+  const bits = [];
+
+  // 1. aria-describedby (may list multiple IDs)
+  const describedBy = el.getAttribute?.("aria-describedby");
+  if (describedBy) {
+    const root = el.getRootNode?.() || document;
+    for (const id of describedBy.trim().split(/\s+/)) {
+      if (!id) continue;
+      const ref = root.getElementById?.(id) || document.getElementById?.(id);
+      if (ref && !ref.matches?.("input, select, textarea, button")) {
+        const t = normalize(textOf(ref, 200));
+        if (t && !/^(this field is required|required field|invalid format|please fill out this field)$/i.test(t)) {
+          bits.push(t);
+        }
+      }
+    }
+  }
+
+  // 2. Surrounding container helper / hint / description elements
+  let curr = el.parentElement;
+  for (let depth = 0; depth < 3 && curr && curr !== document.body && bits.length < 2; depth++) {
+    let cCount = 0;
+    try { cCount = curr.querySelectorAll("input:not([type=hidden]), select, textarea, [role=textbox]").length; } catch {}
+    if (cCount > 1 && depth > 0) break;
+
+    const hintNodes = curr.querySelectorAll?.(
+      ':scope > [class*="help" i], :scope > [class*="hint" i], :scope > [class*="desc" i], ' +
+      ':scope > [class*="subtext" i], :scope > [class*="instruction" i], :scope > [class*="guidance" i], ' +
+      ':scope > small, :scope > p.description, :scope > [data-automation-id*="helpText" i], :scope > .e2CuFe'
+    );
+    if (hintNodes && hintNodes.length) {
+      for (const h of hintNodes) {
+        if (h === el || h.contains(el) || isFormControl(h)) continue;
+        const ht = normalize(textOf(h, 200));
+        if (ht && ht.length >= 4 && !bits.includes(ht) &&
+            !/^(this field is required|required field|invalid format)$/i.test(ht)) {
+          bits.push(ht);
+          if (bits.length >= 2) break;
+        }
+      }
+    }
+    curr = curr.parentElement;
+  }
+
+  return [...new Set(bits)].join(" ");
 }
 
 /**
@@ -274,13 +443,23 @@ export function labelOf(el) {
 // Section context
 // ─────────────────────────────────────────────────────────────────────────────
 
-const sectionCache = new WeakMap();
+let sectionCache = new WeakMap();
 
 /**
  * Nearest heading above the field, classified.
  * Returns { kind: "education"|"experience"|null, foreign: boolean }.
  */
 function sectionFor(el) {
+  // A question heading inside a field is not its section. Prefer an explicit
+  // enclosing legend before considering nearby visual headings.
+  const enclosing = el.closest?.("fieldset"), legend = enclosing?.querySelector?.(":scope > legend");
+  if (legend) {
+    const text = textOf(legend, 100), low = text.toLowerCase();
+    if (text) return { kind: /employment application|application for employment/.test(low) ? null
+      : /educat|school|universit|college|academic|degree/.test(low) ? "education"
+      : /experien|employ|work history|position|previous role/.test(low) ? "experience" : null,
+      foreign: FOREIGN_SECTION.test(low), text };
+  }
   let node = el.parentElement;
   for (let depth = 0; node && depth < 7; depth++, node = node.parentElement) {
     const cached = sectionCache.get(node);
@@ -311,7 +490,8 @@ function sectionFor(el) {
     if (heading) {
       const low = heading.toLowerCase();
       const info = {
-        kind: /educat|school|universit|college|academic|degree/.test(low) ? "education"
+        kind: /employment application|application for employment/.test(low) ? null
+            : /educat|school|universit|college|academic|degree/.test(low) ? "education"
             : /experien|employ|work history|position|previous role/.test(low) ? "experience"
             : null,
         foreign: FOREIGN_SECTION.test(low),
@@ -376,11 +556,19 @@ function repeatSignature(el) {
  * (`address_line_1`), so it is not treated as one.
  */
 function instanceOf(el) {
+  const attrs = `${el.name || ""} ${el.id || ""} ${el.getAttribute("data-automation-id") || ""}`;
+  const explicit = attrs.match(/\[(\d+)\]/) || attrs.match(/\.(\d+)\./);
   let node = el.parentElement;
 
   for (let depth = 0; node && depth < 8; depth++, node = node.parentElement) {
     const parent = node.parentElement;
     if (!parent) break;
+
+    const declared = node.getAttribute?.("data-repeat-group");
+    if (declared) {
+      const repeats = [...parent.children].filter((c) => c.getAttribute?.("data-repeat-group") === declared);
+      if (repeats.length > 1) return { group: declared, index: explicit ? +explicit[1] : repeats.indexOf(node) };
+    }
 
     const kids = parent.children;
     if (kids.length < 2 || kids.length > 50) continue;
@@ -402,13 +590,11 @@ function instanceOf(el) {
       if (group === undefined) { group = nextGroupId++; groupIds.set(parent, group); }
 
       // Prefer an index the markup states outright; fall back to DOM position.
-      const attrs = `${el.name || ""} ${el.id || ""} ${el.getAttribute("data-automation-id") || ""}`;
-      const explicit = attrs.match(/\[(\d{1,2})\]/) || attrs.match(/\.(\d{1,2})\./);
-      return { group, index: Math.min(explicit ? +explicit[1] : index, 20) };
+      return { group, index: explicit ? +explicit[1] : index };
     }
   }
 
-  return { group: 0, index: 0 };
+  return { group: 0, index: explicit ? +explicit[1] : 0 };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -504,7 +690,7 @@ function isVisible(el, type) {
   // "highlight what's still empty" as well as to the filler. scan() marks them
   // instead, which withholds them from the fill and keeps them on the books.
 
-  const proxied = type === "radio" || type === "checkbox";
+  const proxied = type === "radio" || type === "checkbox" || type === "switch" || el.tagName === "SELECT";
 
   if (typeof el.checkVisibility === "function") {
     // Radios and checkboxes on Greenhouse / Workday / Lever are deliberately
@@ -517,8 +703,8 @@ function isVisible(el, type) {
   }
 
   if (!proxied) {
-    const r = el.getBoundingClientRect();
-    if (r.width <= 1 || r.height <= 1) return false;   // zero-size honeypot
+    const r = el.getBoundingClientRect ? el.getBoundingClientRect() : { width: 10, height: 10 };
+    if (r && (r.width <= 1 || r.height <= 1)) return false;   // zero-size honeypot
   }
   return true;
 }
@@ -526,7 +712,12 @@ function isVisible(el, type) {
 function isHoneypot(el) {
   const hay = `${el.name || ""} ${el.id || ""} ${typeof el.className === "string" ? el.className : ""}`;
   if (HONEYPOT.test(hay)) return true;
-  if (el.getAttribute("autocomplete") === "off" && el.tabIndex === -1) return true;
+  if (el.getAttribute("autocomplete") === "off" && el.tabIndex === -1) {
+    const r = el.getBoundingClientRect?.();
+    const zeroSize = r ? (r.width <= 1 || r.height <= 1) : false;
+    const noLabel = !el.getAttribute("placeholder") && !el.getAttribute("aria-label");
+    if (zeroSize && noLabel) return true;
+  }
   return false;
 }
 
@@ -544,13 +735,17 @@ function isComboInput(el) {
   const role = (el.getAttribute("role") || "").toLowerCase();
   if (role === "combobox" || role === "listbox") return true;
   if (el.hasAttribute("list")) return false;
-  return (el.getAttribute("aria-haspopup") || "").toLowerCase() === "listbox";
+  const popup = (el.getAttribute("aria-haspopup") || "").toLowerCase();
+  return popup === "listbox" || popup === "menu";
 }
 
 function kindOf(el) {
   const tag = el.tagName;
   if (tag === "SELECT") return "select";
   if (tag === "TEXTAREA") return "textarea";
+  if (tag === "BUTTON") {
+    if (isComboInput(el) || el.getAttribute("data-automation-id")?.includes("prompt")) return "combobox";
+  }
   if (tag === "INPUT") {
     const t = (el.type || "text").toLowerCase();
     if (t === "file") return "file";
@@ -597,11 +792,11 @@ function ariaOptionsFor(container, labelMap) {
       nodes = Array.from(container.querySelectorAll('[role="radio"],[role="checkbox"],[role="option"]'));
     } catch { nodes = []; }
   }
-  return nodes.map((n) => ({
-    el: n,
-    label: normalize(n.getAttribute("aria-label") || n.getAttribute("data-value") || textOf(n, 80)),
-    value: n.getAttribute("data-value") || n.getAttribute("value") || ""
-  })).filter((o) => o.label);
+  return nodes.map((n) => {
+    const label = optionLabelFor(n, labelMap);
+    const value = n.getAttribute?.("data-value") || n.getAttribute?.("value") || n.value || label || "";
+    return { el: n, label, value };
+  }).filter((o) => o.label);
 }
 
 /**
@@ -698,12 +893,31 @@ function atsFieldFor(el) {
 }
 
 /** Label for a choice control — the text of the option, not the question. */
-function optionLabelFor(el, labelMap) {
-  if (el.id && labelMap.has(el.id)) {
+export function optionLabelFor(el, labelMap) {
+  const ariaLabel = el.getAttribute?.("aria-label");
+  if (ariaLabel) {
+    const t = normalize(ariaLabel);
+    if (t) return t;
+  }
+
+  const by = el.getAttribute?.("aria-labelledby");
+  if (by) {
+    const root = el.getRootNode?.() || document;
+    let parts = "";
+    for (const id of by.trim().split(/\s+/)) {
+      if (!id) continue;
+      const ref = root.getElementById?.(id) || document.getElementById?.(id);
+      if (ref) parts += " " + textOf(ref, 80);
+    }
+    const t = normalize(parts);
+    if (t) return t;
+  }
+
+  if (el.id && labelMap?.has?.(el.id)) {
     const t = textOf(labelMap.get(el.id), 80);
     if (t) return t;
   }
-  const wrap = el.closest?.("label");
+  const wrap = el.closest?.("label, .docssharedWizToggleLabeledContainer, [data-value]");
   if (wrap) {
     const t = textOf(wrap, 80);
     if (t) return t;
@@ -713,7 +927,10 @@ function optionLabelFor(el, labelMap) {
     const t = textOf(next, 80);
     if (t) return t;
   }
-  return normalize(el.getAttribute("aria-label") || el.value || "");
+  const selfText = textOf(el, 80);
+  if (selfText) return selfText;
+
+  return normalize(el.getAttribute?.("data-value") || el.value || "");
 }
 
 /**
@@ -732,7 +949,7 @@ function groupQuestion(el) {
   const rg = el.closest?.('[role="radiogroup"],[role="group"]');
   if (rg) {
     const aria = rg.getAttribute("aria-label");
-    if (aria) return normalize(aria);
+    if (aria && !isGenericLabel(aria)) return normalize(aria);
     // `aria-labelledby` is a *list* of ids. Passing the raw attribute to
     // getElementById finds nothing the moment a page names two elements —
     // "legend-1 hint-1" is not an id — and the question then fell through to the
@@ -740,13 +957,38 @@ function groupQuestion(el) {
     const by = rg.getAttribute("aria-labelledby");
     if (by) {
       const root = rg.getRootNode?.() || document;
+      const ids = by.trim().split(/\s+/).filter(Boolean);
+      for (const id of ids) {
+        const ref = root.getElementById?.(id) || document.getElementById?.(id);
+        if (ref && (ref.getAttribute?.("role") === "heading" || /^H[1-6]$/i.test(ref.tagName) || /heading|title|question/i.test(ref.className || ""))) {
+          const ht = normalize(textOf(ref, 150));
+          if (ht && !isGenericLabel(ht)) return ht;
+        }
+      }
+      if (ids.length > 1) {
+        const firstRef = root.getElementById?.(ids[0]) || document.getElementById?.(ids[0]);
+        if (firstRef) {
+          const ft = normalize(textOf(firstRef, 150));
+          if (ft && ft.length >= 2 && !isGenericLabel(ft)) return ft;
+        }
+      }
       let parts = "";
-      for (const id of by.split(/\s+/)) {
-        const ref = root.getElementById?.(id) || document.getElementById(id);
+      for (const id of ids) {
+        const ref = root.getElementById?.(id) || document.getElementById?.(id);
         if (ref) parts += " " + textOf(ref, 120);
       }
       const t = normalize(parts);
-      if (t) return t;
+      if (t && !isGenericLabel(t)) return t;
+    }
+  }
+
+  // Google Forms question container
+  const gFormItem = el.closest?.('[role="listitem"], .geS5n, .Qr7Oae, [data-item-id], .freebirdFormviewerViewItemsItemItem');
+  if (gFormItem) {
+    const qHeading = gFormItem.querySelector?.('[role="heading"], .M7eMe, .HoN3Ob, .freebirdFormviewerComponentsQuestionBaseTitle');
+    if (qHeading && !qHeading.contains(el) && !isFormControl(qHeading)) {
+      const ht = normalize(textOf(qHeading, 250));
+      if (ht && !isGenericLabel(ht)) return ht;
     }
   }
 
@@ -754,10 +996,34 @@ function groupQuestion(el) {
   // ARIA of their own — this is the question, and it stays the main path.
   const fs = el.closest?.("fieldset");
   if (fs) {
-    const lg = fs.querySelector(":scope > legend");
+    const lg = fs.querySelector?.(":scope > legend");
     if (lg) {
       const t = textOf(lg, 200);
-      if (t) return t;
+      if (t && !isGenericLabel(t)) return t;
+    }
+  }
+
+  // Question container wrapper label or heading before falling back to section heading.
+  let node = el.parentElement;
+  for (let depth = 0; node && depth < 5 && node !== document.body; depth++, node = node.parentElement) {
+    if (node.tagName === "FIELDSET") break;
+    const qLabel = node.querySelector?.(":scope > label, :scope > [class*='label' i], :scope > [class*='question' i], :scope > [class*='title' i]");
+    if (qLabel && !qLabel.contains(el) && !isFormControl(qLabel)) {
+      const t = textOf(qLabel, 200);
+      if (t && t.length < 200 && !isGenericLabel(t)) return t;
+    }
+    const heading = node.querySelector?.('[role="heading"]');
+    if (heading && !heading.contains(el) && !heading.querySelector?.('[role="radio"],[role="checkbox"]') && !isFormControl(heading)) {
+      const t = textOf(heading, 200);
+      if (t && t.length < 200 && !isGenericLabel(t)) return t;
+    }
+    let sib = node.previousElementSibling;
+    for (let i = 0; sib && i < 2; i++, sib = sib.previousElementSibling) {
+      if (isFormControl(sib)) break;
+      if (sib.matches?.(HEADING_SELECTOR) || sib.tagName === "LABEL" || /label|question|title/i.test(sib.className || "")) {
+        const t = textOf(sib, 200);
+        if (t && t.length < 200 && !isGenericLabel(t)) return t;
+      }
     }
   }
 
@@ -766,14 +1032,87 @@ function groupQuestion(el) {
   return sec.text || "";
 }
 
+export const COMBO_PLACEHOLDER_RE = /^[\s\u00a0-]*(\b(select(\s+(one|an?\s+option))?|choose(\s+(one|an?\s+option))?|please\s+select|none|search|type\s+to\s+search)\b)?[\s\u00a0-]*$/i;
+
+export function isComboboxFilled(el) {
+  if (el.ownerDocument && el.getRootNode && !el.hasAttribute("list")) return selectedValues(el).length > 0;
+  const vt = el.getAttribute?.("aria-valuetext") || el.getAttribute?.("aria-valuenow");
+  if (vt && !COMBO_PLACEHOLDER_RE.test(vt)) return true;
+
+  if (el.value && el.value.trim() && !COMBO_PLACEHOLDER_RE.test(el.value.trim())) return true;
+
+  if (el.tagName === "BUTTON" || isAria(el)) {
+    const text = normalize(el.textContent || "");
+    if (text && !COMBO_PLACEHOLDER_RE.test(text)) return true;
+  }
+
+  let parent = el.parentElement;
+  for (let d = 0; d < 3 && parent && parent !== document.body; d++, parent = parent.parentElement) {
+    const selectedItem = parent.querySelector?.(
+      '[class*="singleValue" i],' +
+      '[class*="single-value" i],' +
+      '[class*="selectedItem" i],' +
+      '[class*="selected-item" i],' +
+      '[data-automation-id*="selectedItem"],' +
+      '[data-automation-id*="activeChip"],' +
+      '[class*="chip" i],' +
+      '[class*="pill" i]'
+    );
+    if (selectedItem) {
+      const st = normalize(selectedItem.textContent || "");
+      if (st && !COMBO_PLACEHOLDER_RE.test(st)) return true;
+    }
+  }
+
+  return false;
+}
+
+/** Check if an existing file upload is detected on or around this file input. */
+export function hasExistingUpload(el) {
+  if (el.files && el.files.length > 0) return true;
+  let node = el.parentElement;
+  const docBody = globalThis.document?.body;
+  for (let depth = 0; node && depth < 4 && (!docBody || node !== docBody); depth++, node = node.parentElement) {
+    // If this container holds multiple file inputs, it is a shared section or whole form,
+    // not this specific control's upload wrapper. Stop climbing to avoid cross-field false positives.
+    if (node.querySelectorAll?.('input[type="file"]').length > 1) break;
+
+    if (node.querySelector?.(
+      '[data-automation-id*="file-upload-item"],' +
+      '[data-automation-id*="uploadedFile"],' +
+      '[data-automation-id*="delete-file"],' +
+      '[class*="uploaded" i],' +
+      '[class*="fileName" i],' +
+      '[class*="file-name" i],' +
+      '[class*="file_name" i],' +
+      '[class*="fileItem" i],' +
+      '[class*="file-item" i],' +
+      '[class*="attachment" i],' +
+      '[id*="resume_filename"],' +
+      '[data-automation-id*="file"] button,' +
+      '[class*="file" i] button,' +
+      '[class*="upload" i] button,' +
+      '[class*="attach" i] button,' +
+      'button[aria-label*="remove file" i],button[aria-label*="delete file" i],button[aria-label*="delete upload" i],button[aria-label*="remove attachment" i],button[aria-label*="delete attachment" i],button[aria-label*="remove resume" i],button[aria-label*="delete resume" i],' +
+      'button[title*="remove file" i],button[title*="delete file" i],button[title*="remove attachment" i],button[title*="delete attachment" i],button[title*="remove resume" i],button[title*="delete resume" i]'
+    )) return true;
+    const text = node.textContent || "";
+    if (/[\w-]{2,}\.(?:pdf|docx?|odt|rtf|txt)\b/i.test(text) && !/accepted|supported|max\s*\d+|format/i.test(text)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Scan the frame and return field descriptors.
  *
  * Radios and checkboxes sharing a name become a single "radiogroup" descriptor
  * carrying its options, so the matcher sees the question rather than the answers.
  */
-export function scan() {
-  const roots = getRoots();
+export function scan(customRoot = null) {
+  sectionCache = new WeakMap(); // SPA labels/sections must be recomputed for each scan.
+  const roots = customRoot ? [customRoot] : getRoots();
   const labelMap = buildLabelMap(roots);
 
   const raw = [];
@@ -792,6 +1131,7 @@ export function scan() {
     if (seen.has(el)) continue;
     seen.add(el);
     if (el.closest?.(OWN_UI)) continue;
+    if(el.matches?.('.select2-selection__rendered[aria-readonly="true"]'))continue;
 
     const kind = kindOf(el);
     if (!isVisible(el, kind)) continue;
@@ -808,6 +1148,8 @@ export function scan() {
       fields.push({
         el, kind: "radiogroup",
         label: (question || "").toLowerCase(), rawLabel: question,
+        helperText: helperTextFor(el),
+        sectionTitle: sec.text || "",
         name: el.getAttribute("name") || "", id: el.id || "",
         type: "radio", placeholder: "", autocomplete: "",
         nameTokens: tokenize(`${question} ${el.id || ""}`),
@@ -848,6 +1190,8 @@ export function scan() {
           kind: kind === "radio" ? "radiogroup" : "checkboxgroup",
           label: (question || "").toLowerCase(),
           rawLabel: question,
+          helperText: helperTextFor(el),
+          sectionTitle: sec.text || "",
           name: el.name || "",
           id: el.id || "",
           type: kind,
@@ -865,10 +1209,12 @@ export function scan() {
         groups.set(key, idx);
       }
       const d = fields[idx];
+      const optLabel = optionLabelFor(el, labelMap);
+      const optVal = el.getAttribute("data-value") || el.getAttribute("value") || el.value || optLabel || "";
       d.options.push({
         el,
-        label: aria ? normalize(el.getAttribute("aria-label") || textOf(el, 80)) : optionLabelFor(el, labelMap),
-        value: el.getAttribute("data-value") || el.value || ""
+        label: optLabel,
+        value: optVal
       });
       if (aria ? ariaChecked(el) : el.checked) d.filled = true;
       continue;
@@ -886,6 +1232,8 @@ export function scan() {
       kind,
       label: label.toLowerCase(),
       rawLabel: label,
+      helperText: helperTextFor(el),
+      sectionTitle: sec.text || "",
       name,
       id,
       type: (el.type || "").toLowerCase(),
@@ -911,8 +1259,10 @@ export function scan() {
     if (kind === "select") {
       d.options = Array.from(el.options)
         .map((o) => ({ el: o, label: normalize(o.text), value: o.value }))
-        .filter((o) => o.label && !/^(--\s*)?(select|choose|please select)/i.test(o.label));
-      d.filled = el.selectedIndex > 0 && !!el.value;
+        .filter((o) => o.label && !COMBO_PLACEHOLDER_RE.test(o.label) && !/^(--\s*)?(select|choose|please select)/i.test(o.label));
+      const selectedOpt = el.options[el.selectedIndex];
+      const isPlaceholder = selectedOpt && (COMBO_PLACEHOLDER_RE.test(selectedOpt.text || "") || /^(--\s*)?(select|choose|please select)/i.test(selectedOpt.text || ""));
+      d.filled = el.selectedIndex >= 0 && !isPlaceholder && !!el.value;
     } else if (kind === "checkbox") {
       d.filled = isAria(el) ? ariaChecked(el) : el.checked;
       d.options = [{ el, label: optionLabelFor(el, labelMap), value: el.value || "" }];
@@ -923,16 +1273,18 @@ export function scan() {
       d.filled = ariaChecked(el);
       d.options = null;
     } else if (kind === "file") {
-      d.filled = !!(el.files && el.files.length > 0);
+      d.filled = !!(el.files && el.files.length > 0) || hasExistingUpload(el);
       d.accept = el.getAttribute("accept") || "";
       // A hidden input carries none of the words a human reads. "Attach resume"
       // lives on the button, "Drop your CV here" on the zone — so the wrapper is
       // where the descriptor has to get its meaning from.
       d.uploadContext = uploadContextFor(el);
       d.className = typeof el.className === "string" ? el.className : "";
+    } else if (kind === "combobox") {
+      d.filled = isComboboxFilled(el);
     } else if (isAria(el)) {
       // An ARIA textbox/combobox holds its value as text, not in `.value`.
-      d.filled = !!(el.getAttribute("aria-label") && el.textContent?.trim()) || !!el.value?.trim();
+      d.filled = !!(el.textContent?.trim() || el.value?.trim());
     } else {
       d.filled = !!(el.value && el.value.trim());
     }
@@ -940,11 +1292,83 @@ export function scan() {
     // Left to the end so the `filled` rules above stay exactly as they were —
     // this only adds what the control offers, when that is readable up front.
     if (kind === "combobox") d.options = comboboxOptions(el);
+    if(kind==='combobox' && el.matches('.select2-selection')) {
+      const backing=el.closest('.select2-container')?.previousElementSibling;
+      if(backing?.tagName==='SELECT' && !backing.multiple) {
+        d.nativeSelect=backing;d.name=backing.name;d.id=backing.id;d.nameTokens=tokenize(backing.name+' '+backing.id);
+        d.options=[...backing.options].filter(o=>o.value).map(o=>({el:o,label:normalize(o.text),value:o.value}));
+        d.filled=!!backing.value;
+        if(/phone.*\.countryCode$/i.test(backing.name)) {d.phonePart='code';d.atsField='phoneCountryCode';}
+      }
+    }
 
     fields.push(d);
   }
 
-  return groupDateParts(fields);
+  const descriptors=groupDateParts(fields).map((field) => describe(field, resolveLabels(field.el, labelMap, fallbackLabelFor, isGenericLabel)));
+  for(const code of descriptors.filter(f=>f.nativeSelect && f.phonePart==='code')) {
+    const prefix=code.nativeSelect.name.replace(/\.countryCode$/i,'');
+    const number=descriptors.filter(f=>f.name===prefix+'.number' && code.nativeSelect.parentElement.parentElement.contains(f.el));
+    if(number.length===1)number[0].phonePart='national';
+  }
+  // Some forms use one Mobile Phone label for both a dial-code select and
+  // its number input. Identify the pair from local controls and code choices.
+  for(const code of descriptors.filter(f=>f.kind==="select" && /phone|mobile|telephone/i.test(f.rawLabel))) {
+    if(!code.options?.length || !code.options.every(o=>/^\+?\d{1,4}$/.test(o.value.trim())) || !code.options.some(o=>/\+\d{1,4}/.test(o.label)))continue;
+    const box=code.el.parentElement;
+    const numbers=descriptors.filter(f=>f!==code && box.contains(f.el) && ["text","tel"].includes(f.type) && /phone|mobile|telephone/i.test(f.rawLabel));
+    if(numbers.length!==1 || box.querySelectorAll('select,input:not([type="hidden"])').length!==2)continue;
+    code.phonePart="code";code.atsField="phoneCountryCode";
+    numbers[0].phonePart="national";
+  }
+  return descriptors;
+}
+
+/**
+ * Every control this frame holds, before any of `scan()`'s judgement is applied.
+ *
+ * This exists for the "what's still empty" check, and the point of it is that it
+ * shares none of `scan()`'s reasoning. A review built on `scan()` can only ever
+ * agree with it: a field the scanner drops — because a wrapper measured zero,
+ * because a name matched the honeypot pattern, because the shadow-root cache was
+ * stale when it ran — is a field the review then reports as complete. That is
+ * the worst failure this extension has, because it is the one that tells you a
+ * form is ready to submit when two required boxes are empty.
+ *
+ * The shadow cache is dropped first for the same reason: a review that trusts a
+ * cache built during the fill inherits whatever that cache had already missed.
+ */
+export function rawControls() {
+  invalidateShadowCache();
+
+  const out = [];
+  for (const root of getRoots()) {
+    let found;
+    try { found = root.querySelectorAll(FIELD_SELECTOR); } catch { continue; }
+    for (const el of found) out.push(el);
+  }
+  return out;
+}
+
+/**
+ * Why `scan()` would refuse this control, or "" if it would keep it.
+ *
+ * Diagnostic only, and deliberately written as the same sequence of tests in the
+ * same order: when the review turns up a field the filler never saw, this is
+ * what says which rule threw it away, in one console line, instead of leaving it
+ * to be guessed at from the outside.
+ */
+export function whyDropped(el) {
+  if (el.closest?.(OWN_UI)) return "belongs to our own panel";
+  const kind = kindOf(el);
+  if (el.disabled) return "disabled";
+  if (el.getAttribute?.("aria-disabled") === "true") return "aria-disabled";
+  if (!isVisible(el, kind)) {
+    const r = el.getBoundingClientRect?.();
+    return `judged invisible (${r ? `${Math.round(r.width)}x${Math.round(r.height)}px` : "no box"})`;
+  }
+  if (kind !== "radio" && kind !== "checkbox" && isHoneypot(el)) return "matched the honeypot test";
+  return "";
 }
 
 /** Cheap probe used by the sentinel: does this frame hold a real form? */

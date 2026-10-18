@@ -158,8 +158,18 @@
                 <input type="text" id="personal-middleName" class="form-control" placeholder="(optional)">
               </div>
               <div class="form-group">
+                <label class="form-label" for="personal-preferredName">Preferred name</label>
+                <input type="text" id="personal-preferredName" class="form-control" placeholder="Nickname / preferred first name (optional)">
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
                 <label class="form-label" for="personal-fullName">Full name</label>
                 <input type="text" id="personal-fullName" class="form-control" placeholder="Alex Morgan">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-location">Location (free text)</label>
+                <input type="text" id="personal-location" class="form-control" placeholder="City, Country">
               </div>
             </div>
             <div class="grid-2">
@@ -173,10 +183,6 @@
                 <div class="form-hint">Keep the country code. When a form has a separate dialling-code box, it is split automatically.</div>
               </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="personal-location">Location (free text)</label>
-              <input type="text" id="personal-location" class="form-control" placeholder="City, Country">
-            </div>
           </div>
 
           <div class="card card-pad mb-3">
@@ -186,9 +192,15 @@
                 <div class="section-sub">Workday, iCIMS and Taleo ask for these as separate boxes. Filling them here is what lets those forms complete in one press.</div>
               </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="personal-address">Street address</label>
-              <input type="text" id="personal-address" class="form-control" placeholder="221B Baker Street">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-address">Street address</label>
+                <input type="text" id="personal-address" class="form-control" placeholder="221B Baker Street">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="personal-addressLine2">Address line 2</label>
+                <input type="text" id="personal-addressLine2" class="form-control" placeholder="Apt, suite, unit (optional)">
+              </div>
             </div>
             <div class="grid-2">
               <div class="form-group">
@@ -325,6 +337,12 @@
                 <input type="url" id="personal-portfolio" class="form-control" placeholder="https://myproject.vercel.app">
               </div>
             </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="personal-twitter">Twitter / X</label>
+                <input type="url" id="personal-twitter" class="form-control" placeholder="https://x.com/username">
+              </div>
+            </div>
           </div>
         </section>
 
@@ -402,7 +420,8 @@
                 <div class="form-group">
                   <label class="form-label" for="ai-model">Model <span class="faint">— pick one or type your own</span></label>
                   <input id="ai-model" class="form-control" list="model-suggestions"
-                         placeholder="gemini-2.0-flash" autocomplete="off" spellcheck="false">
+                         placeholder="gemini-3.8-flash" autocomplete="off" spellcheck="false">
+                  <p id="model-health-notice" class="text-sm"></p>
                   <datalist id="model-suggestions"></datalist>
                   <div class="form-hint" id="model-hint">Any model id the provider accepts works here.</div>
                 </div>
@@ -426,6 +445,28 @@
                   <input type="checkbox" id="ai-autofill-toggle">
                   <span class="toggle-slider"></span>
                 </label>
+              </div>
+
+              <div class="toggle-row mt-3">
+                <div>
+                  <div class="toggle-label">"Fill with AI" on paragraph fields</div>
+                  <div class="toggle-desc">
+                    Places a dedicated "Fill with AI" button on every field that demands a paragraph answer (cover letters, why us, challenge descriptions), allowing exclusive requests with optional custom instructions.
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="field-ai-button-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="form-group mt-3">
+                <label for="default-custom-instruction" class="form-label">
+                  Default custom instructions for paragraph answers (optional)
+                </label>
+                <textarea id="default-custom-instruction" class="form-control" rows="2"
+                  placeholder="e.g. Focus on my backend and distributed systems experience, keep under 150 words"></textarea>
+                <span class="text-xs faint">Applied as a starting prompt when using "Fill with AI" on paragraph fields. You can always edit instructions per field on the page.</span>
               </div>
             </div>
           </div>
@@ -556,8 +597,8 @@
           <div class="page-head">
             <h1 class="page-title">Learned answers</h1>
             <p class="page-sub">
-              When you fill something in by hand, the label and your answer are remembered. The next form that
-              asks the same question gets the same answer, for free, without touching the model.
+              Reviewed answers are reused when the question and application context still match.
+              Confirm resume facts and common details below.
             </p>
           </div>
 
@@ -667,7 +708,15 @@
               </div>
               <button id="add-site-btn" class="btn btn-sm"><span data-icon="plus"></span>Add site</button>
             </div>
+            <div class="section-title mt-3">Review saved answers</div><div id="legacy-answer-review"></div>
             <div id="disabled-sites-list" class="kv-list"></div>
+            <div class="toggle-row mt-3">
+              <div>
+                <div class="toggle-label">Local autofill diagnostics</div>
+                <div class="toggle-desc">Record control types, stages and reasons on this page. Questions, answers and URLs are excluded. Export from the toolbar popup; records clear when the page reloads.</div>
+              </div>
+              <label class="toggle-switch"><input type="checkbox" id="set-diagnostics"><span class="toggle-slider"></span></label>
+            </div>
           </div>
 
           <div class="card card-pad mb-3">

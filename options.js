@@ -2,13 +2,13 @@
 
 import {
   loadContext, loadResumeFile, saveResumeFile,
-  saveProfile, saveSettings, saveLearned, save, DEFAULT_PROFILE,
+  saveProfile as storeProfile, saveSettings, saveLearned as storeLearned, confirmSavedAnswer, save, DEFAULT_PROFILE,
   loadHistory, saveHistory, loadLetters, saveLetters,
   APPLICATION_STATUS, completeness, normalizeHost, setSiteDisabled,
   exportAll, importAll, resetAll, storageUsage, overlayFilled, staleApplications,
   resumeTextIsCurrent, safeHttpUrl
 } from "./src/shared/schema.js";
-import { PROVIDERS, resolveProvider, canReadPdf } from "./src/shared/ai.js";
+import { PROVIDERS, resolveProvider, canReadPdf, providerHealth } from "./src/shared/ai.js";
 import { ICONS } from "./src/shared/icons.js";
 import { applyTheme, watchTheme, THEMES } from "./src/shared/theme.js";
 import {
@@ -16,19 +16,41 @@ import {
   copyText, downloadBlob, pickFile, relativeTime
 } from "./src/shared/ui.js";
 import { CONTACT_EMAIL, feedbackMailto } from "./src/shared/contact.js";
+import { knowledge } from "./src/knowledge/client.js";
+import { mountKnowledge } from "./src/knowledge/dashboard.js";
+import { mountReleaseControls } from "./src/release/dashboard.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const PERSONAL_KEYS = [
-  "firstName", "lastName", "middleName", "fullName", "email", "phone",
-  "website", "linkedin", "github", "portfolio",
-  "address", "city", "state", "postalCode", "country", "location",
+  "firstName", "lastName", "middleName", "fullName", "preferredName", "email", "phone",
+  "website", "linkedin", "github", "portfolio", "twitter",
+  "address", "addressLine2", "city", "state", "postalCode", "country", "location",
   "visaStatus", "authorizedToWork", "sponsorshipRequired"
 ];
 
-let state = await loadContext();
+const saveProfile = async (profile) => {
+  const changes = [];
+  for (const key of new Set([...Object.keys(profileBaseline), ...Object.keys(profile)])) {
+    if (["personal", "customFields"].includes(key)) {
+      for (const part of new Set([...Object.keys(profileBaseline[key] || {}), ...Object.keys(profile[key] || {})]))
+        if (JSON.stringify(profileBaseline[key]?.[part]) !== JSON.stringify(profile[key]?.[part])) changes.push({ path: `${key}.${part}`, before: profileBaseline[key]?.[part], value: profile[key]?.[part] });
+    } else if (JSON.stringify(profileBaseline[key]) !== JSON.stringify(profile[key])) changes.push({ path: key, before: profileBaseline[key], value: profile[key] });
+  }
+  if (changes.length) await knowledge("profile", { changes });
+  profileBaseline = structuredClone(profile);
+};
+const saveLearned = async (learned) => {
+  const changes = [...new Set([...Object.keys(learnedBaseline), ...Object.keys(learned)])].filter(key => learnedBaseline[key] !== learned[key])
+    .map(key => ({ key, before: learnedBaseline[key], value: learned[key] }));
+  if (changes.length) await knowledge("legacy-edit", { kind: "learned", changes });
+  learnedBaseline = structuredClone(learned);
+};
+let state = await loadContext({ includeUnverified: true });
+let profileBaseline = structuredClone(state.profile);
+let learnedBaseline = structuredClone(state.learned);
 let resumeBase64 = await loadResumeFile();
 let history = await loadHistory();
 let letters = await loadLetters();
@@ -74,6 +96,8 @@ const resumeParsedText = $("resume-parsed-text");
 const mappingsList = $("mappings-list");
 const customFieldsList = $("custom-fields-list");
 const aiAutofillToggle = $("ai-autofill-toggle");
+const fieldAiButtonToggle = $("field-ai-button-toggle");
+const defaultCustomInstructionInput = $("default-custom-instruction");
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const ask = (type, payload = {}) =>
@@ -230,6 +254,8 @@ function renderAll() {
 
   providerSelect.value = PROVIDERS[state.settings.provider] ? state.settings.provider : "gemini";
   aiAutofillToggle.checked = state.settings.aiAutofillEnabled === true;
+  if (fieldAiButtonToggle) fieldAiButtonToggle.checked = state.settings.fieldAiButtonEnabled !== false;
+  if (defaultCustomInstructionInput) defaultCustomInstructionInput.value = state.settings.defaultCustomInstruction || "";
 
   renderProvider();
   renderResume();
@@ -448,6 +474,8 @@ function renderProvider() {
   apiKeyInput.placeholder = spec.keyPlaceholder;
   modelInput.value = (name === "groq" ? state.settings.groqModel : state.settings.geminiModel) || spec.models[0];
   modelInput.placeholder = spec.models[0];
+  const health = providerHealth({ ...state.settings, provider: name });
+  $("model-health-notice").textContent = health.ok ? "" : health.error;
 
   providerNameKey.textContent = `(${spec.label})`;
   keyLink.href = spec.keyUrl;
@@ -514,6 +542,8 @@ async function saveEverything(quiet = false) {
   state.profile = collectProfile();
   captureProviderFields();
   state.settings.aiAutofillEnabled = aiAutofillToggle.checked;
+  if (fieldAiButtonToggle) state.settings.fieldAiButtonEnabled = fieldAiButtonToggle.checked;
+  if (defaultCustomInstructionInput) state.settings.defaultCustomInstruction = defaultCustomInstructionInput.value.trim();
   state.resumeMeta.text = resumeParsedText.value;
 
   await Promise.all([
@@ -711,7 +741,22 @@ providerSelect.addEventListener("change", async () => {
 
 apiKeyInput.addEventListener("input", () => { renderResume(); renderOverview(); });
 apiKeyInput.addEventListener("change", async () => { captureProviderFields(); await saveSettings(state.settings); });
-modelInput.addEventListener("change", async () => { captureProviderFields(); await saveSettings(state.settings); });
+modelInput.addEventListener("input", () => {
+  const provider = providerSelect.value;
+  const currentModel = modelInput.value.trim();
+  const health = providerHealth({
+    ...state.settings,
+    provider,
+    [provider === "groq" ? "groqModel" : "geminiModel"]: currentModel
+  });
+  $("model-health-notice").textContent = health.ok ? "" : health.error;
+});
+modelInput.addEventListener("change", async () => {
+  captureProviderFields();
+  const health = providerHealth({ ...state.settings, provider: providerSelect.value });
+  $("model-health-notice").textContent = health.ok ? "" : health.error;
+  await saveSettings(state.settings);
+});
 
 testApiBtn.addEventListener("click", async () => {
   const key = apiKeyInput.value.trim();
@@ -827,14 +872,10 @@ autofillProfileBtn.addEventListener("click", async () => {
       // an answer to a work-authorization question — so a plain spread wrote
       // those blanks over values you had typed by hand. A blank from the
       // extractor means "the resume does not say", not "clear this field".
-      state.profile = {
-        ...overlayFilled(state.profile, profile),
-        personal: overlayFilled(state.profile.personal, profile.personal),
-        customFields: state.profile.customFields || {}
-      };
-      await saveProfile(state.profile);
-      renderAll();
-      toast("Profile filled in from your resume. Check it over.");
+      const proposal = await knowledge("propose", { profile, resumeText: state.resumeMeta.text });
+      knowledgeDashboard.showProposals(proposal.facts);
+      document.querySelector('[data-tab="tab-learned"]').click();
+      toast("Resume facts are ready for your confirmation.");
     } catch (err) {
       toastError(err);
     }
@@ -864,6 +905,12 @@ aiAutofillToggle.addEventListener("change", async () => {
   state.settings.aiAutofillEnabled = aiAutofillToggle.checked;
   await saveSettings(state.settings);
   flash(aiAutofillToggle.checked ? "AI answers on" : "AI answers off");
+});
+
+fieldAiButtonToggle?.addEventListener("change", async () => {
+  state.settings.fieldAiButtonEnabled = fieldAiButtonToggle.checked;
+  await saveSettings(state.settings);
+  flash(fieldAiButtonToggle.checked ? "Field AI button on" : "Field AI button off");
 });
 
 // ─── Key/value lists ─────────────────────────────────────────────────────────
@@ -1236,6 +1283,12 @@ const SETTING_TOGGLES = {
   "set-badge": "showBadge"
 };
 
+$("set-diagnostics").addEventListener("change", async () => {
+  state.settings.diagnosticsEnabled = $("set-diagnostics").checked;
+  await saveSettings(state.settings);
+  flash("Setting saved. Turning off clears open-page diagnostics.");
+});
+
 for (const [id, key] of Object.entries(SETTING_TOGGLES)) {
   $(id).addEventListener("change", async () => {
     state.settings[key] = $(id).checked;
@@ -1245,6 +1298,17 @@ for (const [id, key] of Object.entries(SETTING_TOGGLES)) {
 }
 
 function renderSettings() {
+  const legacy = $("legacy-answer-review");
+  const unverified = state.legacyUnverified || {};
+  const rows = ["learned", "customFields"].flatMap((kind) => Object.entries(unverified[kind] || {}).map(([key, value]) => ({ kind, key, value })));
+  legacy.innerHTML = rows.length ? `<p>${rows.length} saved answers have unknown provenance. Review each before reuse.</p>` + rows.slice(0, 200).map((r, i) => `<div class="toggle-row"><div><strong>${esc(r.key)}</strong><div>${esc(r.value)}</div><small>Legacy — unverified</small></div><button class="btn btn-sm" data-approve="${i}">Confirm answer</button></div>`).join("") : "No saved answers awaiting confirmation.";
+  legacy.querySelectorAll("[data-approve]").forEach((button) => button.addEventListener("click", async () => {
+    const row = rows[Number(button.dataset.approve)];
+    try { await confirmSavedAnswer(row.kind, row.key, row.value); delete state.legacyUnverified[row.kind][row.key]; renderSettings(); flash("Answer confirmed"); }
+    catch (err) { toastError(err.message); }
+  }));
+
+  $("set-diagnostics").checked = state.settings.diagnosticsEnabled === true;
   for (const [id, key] of Object.entries(SETTING_TOGGLES)) $(id).checked = state.settings[key] !== false;
 
   const list = $("disabled-sites-list");
@@ -1316,7 +1380,7 @@ $("import-btn").addEventListener("click", async () => {
   try {
     const parsed = JSON.parse(file.text);
     const keys = await importAll(parsed);
-    state = await loadContext();
+    state = await loadContext({ includeUnverified: true });
     history = await loadHistory();
     letters = await loadLetters();
     resumeBase64 = await loadResumeFile();
@@ -1361,4 +1425,8 @@ $("sidebar-feedback").target = "_blank";
 $("copy-email-btn").addEventListener("click", () => copyText(CONTACT_EMAIL, "Email address copied"));
 
 // ─── Go ──────────────────────────────────────────────────────────────────────
+const knowledgeDashboard = mountKnowledge({ notify: toast, onProfile: async () => {
+  state = await loadContext({ includeUnverified: true }); profileBaseline = structuredClone(state.profile); renderAll();
+} });
+mountReleaseControls();
 renderAll();

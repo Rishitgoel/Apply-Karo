@@ -27,8 +27,16 @@ automatically on first run — nothing to re-enter.
 - The toolbar popup shows what it can see on the page, forces a fill on one
   detection skipped, swaps in a new resume PDF without opening the dashboard,
   and switches the extension off for the current site.
+- It is also where you *Capture* the job description while you are reading it,
+  then ask for a *Match me* or a *Cover letter* — from there, or from the form
+  two clicks later, or from any page at all. See
+  [The posting](#the-posting-and-where-it-actually-lives).
 
-Green outline = filled from a rule. Amber = a low-confidence guess worth checking.
+Green outline = filled from a rule. Amber = an AI draft or uncertain result that needs review. An evidence reference does not guarantee every claim in a draft is true.
+
+Toolbar Fill, the browser shortcut and the page panel now start the same background-owned job. Closing the popup does not cancel it. Reopen it to see progress or the result. Interrupted jobs with an unknown outcome require review before retrying.
+
+Older learned/custom answers are preserved but excluded from reuse until you confirm them in Dashboard → Settings → Legacy answers. Newly generated AI answers remain drafts; they are not automatically saved as approved answers. Existing model selections are preserved; a retired model shows an actionable error so you can choose a replacement.
 
 **Your resume is attached for you.** A fill also uploads the PDF from the Resume
 tab into the form's file box, so the one field that used to need a file dialog no
@@ -58,11 +66,12 @@ is not a blank box, it is a confident wrong answer you did not notice.
 
 | Feature | Where |
 | --- | --- |
-| **Job match.** Compares you against the posting on screen and reports what you meet, what you're missing and what to lead with. See below. | Panel → *Match me against this job* |
+| **Captured postings.** The job description is on the listing page; the form you apply on is two clicks later and does not repeat it. *Capture* stores the posting while you are looking at it, and the match and the letter use it from anywhere afterwards. See below. | Popup → *Capture*, or *Paste* |
+| **Job match.** Compares you against the captured posting and reports what you meet, what you're missing and what to lead with. See below. | Popup → *Match me*, or Panel → *Match me against this job* |
 | **Application tracker.** Every page you fill is logged — company, role, site, fields filled, and the match score if you ran one — with a status you set as you hear back, plus CSV export. | Dashboard → Applications |
 | **Follow-up nudges.** Anything sitting at *Applied* or *Interview* with no update for two weeks is surfaced. No model, no network — the timestamp is already on the row. | Dashboard → Overview |
 | **Duplicate warning.** Opening the panel on an employer already in your tracker tells you when you last applied and for what. | The panel |
-| **Cover letters.** Paste a posting and get a draft built from your real experience; on an application page the panel reads the posting itself and types the letter into the form. | Dashboard → Cover letters, and the panel |
+| **Cover letters.** A draft built from your real experience and the captured posting. *Put it in the form* types it into the page's cover-letter box; every draft is saved to the dashboard whether you use it or not. | Popup → *Cover letter*, the panel, and Dashboard → Cover letters |
 | **Profile readiness.** A weighted checklist of what is still missing and what each gap costs you. | Dashboard → Overview, and the popup |
 | **Per-site off switch.** Hostnames the extension ignores entirely — no panel, no automatic fill, no observer. | Popup switch, or Dashboard → Settings |
 | **Backup.** Export/import profile, learned answers, settings and the application log as JSON. API keys are excluded unless you ask for them. | Dashboard → Settings |
@@ -94,16 +103,17 @@ have been less code. Page script can post messages too, and a fill spends your
 real name, address and phone number — "a page cannot ask for one" is worth more
 than the saving.
 
-Two tiers, so the extension costs nothing on pages that are not applications:
+Two tiers keep application filling separate from lightweight page detection:
 
 | File | Role |
 | --- | --- |
-| `src/detect.js` | The only auto-injected script. ~3 KB, runs in every frame, decides whether this is an application. On a normal page it costs one regex test and stops. |
+| `src/detect.js` | The auto-injected detector checks known hosts/URLs and performs a bounded structural probe for unfamiliar employment forms. |
 | `src/engine/*` | Scanner, matcher, filler, panel. Dynamically imported **only** when detection passes. |
 | `src/shared/rules.js` | Field definitions + the scoring matcher + ATS adapters. |
 | `src/shared/values.js` | Vocabulary bridging, date parsing, phone splitting. |
 | `src/engine/steps.js` | Multi-step navigation and its guards, kept separate so they are testable alone. |
-| `src/shared/schema.js` | Profile schema and storage. The resume binary, the application log and saved letters each live under their own key, so a content script never loads what it will not read. |
+| `src/shared/schema.js` | Profile schema and storage. The resume binary, the application log, the captured posting and saved letters each live under their own key, so a content script never loads what it will not read. |
+| `src/shared/posting.js` | Reads a job description and an employer off a page. Outside the engine because the page holding the description is the listing page, which has no form on it — the service worker injects this into the tab on its own. |
 | `src/shared/theme.js` | Resolves light/dark/system onto `<html data-theme>`. |
 | `src/shared/icons.js` | One 16px icon grid shared by the popup, dashboard and panel, so the three cannot drift into different visual languages. |
 | `src/shared/ui.js` | Toasts and modal dialogs, replacing `alert` / `confirm` / `prompt`. |
@@ -116,9 +126,10 @@ specific one, because the specific rule scores higher on it.
 
 ## What gets detected
 
-Three gates, cheapest first, and a page has to pass only one of them to be looked
-at: a known ATS host, a job-shaped URL, or a known form builder. Everything else
-stops at one regex test.
+Known ATS hosts, job-shaped URLs and form builders receive a structural probe.
+Unfamiliar pages can also qualify through employment context and real controls.
+Login, search and checkout fixtures stay excluded. Observation is bounded;
+manual activation remains available when automatic detection misses a form.
 
 The host list covers the five big boards (Greenhouse, Lever, Workday, Ashby,
 SmartRecruiters), the mid-market SaaS boards, the enterprise HCM suites where the
@@ -156,14 +167,68 @@ posting is one of the most ordinary ways to arrive at an application.
 ## Tests
 
 ```bash
-for t in detect ai match values features upload jobmatch frames; do node test/$t.test.mjs; done
+npm test
+npm run eval:phase2
+npm run eval:phase3
+npm run eval:phase4
+npm run eval:phase5
+npm run eval:lifecycle
+npm run build
 ```
 
-341 cases: field matching against real Greenhouse / Lever / Workday / Ashby
-markup, the dropdown-vs-text-box problem below, plus repeated sections, phone
-splitting, date parsing, correction demotion, resume-upload targeting, the
-job-match scoring described below, and the host/URL gate — every ATS in the list
-is asserted to be reachable, and ordinary browsing to still cost one regex test.
+Phase 2 preserves complete questions and ordered accessible labels, uses Unicode
+and section-aware answer keys, and detects question/option revisions. Supported
+dropdowns use owned menus, delayed and virtualized options, clear option matches
+and selection readback. Uncommitted search text does not count as a selection.
+Prose-field popovers offer **Correct detected question**; fixes apply to the
+original question on that application URL. Large AI queues report deferred work
+instead of silently stopping at 80 fields; quota/cancellation requires another
+manual Fill pass. Review every result and submit manually.
+
+The automated browser suite uses synthetic ATS fixtures and fake providers.
+It does not establish live Workday compatibility or 90% time savings. Current
+results and remaining acceptance gates are in
+[the Phase 2 report](docs/evidence/phase2/REPORT.md). `eval:strict` retains broader
+accuracy, write-verification and custom-widget learning gates that remain open.
+
+Phase 3 adds **Verified knowledge** under Learned answers: review resume proposals,
+use **Ask once: common details**, and manage application-scoped corrections with
+export, deletion and undo. Resume extraction proposes changes for confirmation.
+Concurrent tabs send incremental updates to the worker's IndexedDB repository;
+profile/resume/job changes invalidate dependent answers. Imported approvals need
+review again. See [Phase 3 evidence](docs/evidence/phase3/REPORT.md) for coverage and
+the remaining resolver/live-acceptance limits.
+
+Phase 4 routes every scanned field through the shared resolver. Confirmed facts
+and exact approved answers require no model request; ambiguous fields use small
+candidate/evidence batches and stable field/option IDs. Unsupported facts stay
+blank, and grounded or semantically reused prose remains a draft to review.
+Selected-model requests have shared time/request/estimated-token budgets,
+cancellation and dependency-aware caches. See [Phase 4 evidence](docs/evidence/phase4/REPORT.md).
+Autofill uses current resume text: extract or paste text in the dashboard after
+changing a PDF. Human prose relevance and 90% time savings remain unmeasured.
+
+Phase 5 verifies canonical values after the page settles, checks exposed native
+and ARIA validation, and keeps later edits during filling and undo. Dynamic
+follow-ups rescan changed regions. Recognized Workday repeat controls can add
+missing employment/education blocks with bounds and guarded undo; ambiguous
+entity matches stay untouched. Submit-typed Next buttons require manual action.
+See [Phase 5 evidence](docs/evidence/phase5/REPORT.md) for the supported-control
+fixture gate and remaining live acceptance work.
+
+Phase 6 adds a four-state review list, field focus across embedded frames, explicit
+application/personal-question memory scopes, trusted custom-widget correction
+learning, guarded source undo, knowledge search/edit/delete and redacted issue
+reports. Use `npm run eval:phase6` for the real-extension regression checks.
+See [Phase 6 evidence](docs/evidence/phase6/REPORT.md); human review timing and
+seeded-error detection remain pending. Reload the extension and application page
+to use the new review panel.
+
+Phase 7 adds packaged ZIP evaluation, stable/pilot/pause release controls, a
+fictional-data provider probe and a paired-trial recorder. The overall coverage
+gate and human 90% time-saving target remain open. Use `npm run trials` for the
+recorder and Settings → Release controls for the provider probe. See
+[Phase 7 evidence](docs/evidence/phase7/REPORT.md) for measured results and limits.
 
 DOM behaviour is covered by browser harnesses: `harness.html` for scanning
 (23 checks), `harness2.html` for the features below including the submit guards
@@ -240,11 +305,44 @@ enough to override an `autocomplete` attribute or a known ATS field. Demotions
 are keyed by label, not by site, so correcting a question once carries to the
 next board that asks it.
 
+## The posting, and where it actually lives
+
+Almost no application form carries the job description. You read the posting on
+the listing page, press *Apply now*, and land on a form that repeats the company
+boilerplate at best — so a feature that reads "the page you are standing on" is
+blank at exactly the moment you want it. That was the old behaviour, and it
+reported it as *Couldn't find a job description on this page*.
+
+So the description is captured and stored. **Capture** in the popup reads the
+posting off the page you are looking at; **Paste** takes one by hand, for a
+posting behind a *read more*, in a PDF, or in an email. One slot, not a list —
+you apply to one job at a time, and a list would turn a single press into a
+picker. It is kept until you capture the next one or press the bin.
+
+Capture does not need the fill engine, and deliberately so: a listing page has
+no form on it, detection ignores it, and injecting a fill engine into a page
+with nothing to fill would be all cost. The service worker injects the reader on
+its own instead — into every frame, because an embedded board puts the
+description in an iframe as often as not, and the longest answer wins.
+
+After that the match and the letter run from the stored posting, so they work on
+the form page, on a page you have already navigated away from, or with no tab
+open at all. The panel still prefers a description on the page under it when
+there is one — that is the most specific thing available — except against a
+posting you captured by hand in the last twelve hours, which is an explicit
+statement of which job this is. An application form's *About us* section quietly
+replacing the description you captured two clicks ago is the failure that rule
+exists to prevent.
+
+Both requests run in the service worker and write their result to storage before
+replying. A toolbar popup closes the moment you click the page behind it, and a
+letter takes most of a minute; reopening the popup shows what landed while it
+was shut.
+
 ## Matching yourself against a posting
 
-*Match me against this job* reads the posting you are standing on and compares it
-against your resume. It answers two questions: is this worth applying to, and
-what should you say if you do.
+*Match me* compares the captured posting against your resume. It answers two
+questions: is this worth applying to, and what should you say if you do.
 
 The number is the least interesting part of the output, so it is not the part
 the model produces. The model returns two lists — requirements your resume
@@ -370,8 +468,7 @@ Prose answers are written to a house style aimed at not reading as machine
 output: varied sentence length, concrete specifics over adjectives, no
 "I am excited to", no *leverage / delve / spearhead / tapestry*, no
 *Moreover / Furthermore*, no em dashes, and no tidy summarising last line.
-Short factual answers ("Yes", "30 days") are remembered for next time; prose
-never is, so the same essay is not replayed across applications.
+AI output is not automatically remembered. Explicitly saved answers and trusted native-control corrections may be reused. Missing declarations, eligibility facts and preferences remain unresolved rather than receiving guessed defaults.
 
 ## Privacy
 

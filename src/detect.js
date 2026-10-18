@@ -3,7 +3,7 @@
 // This is the ONLY script the manifest injects, and it runs in every frame of
 // every page you visit — so it is deliberately dependency-free and does as
 // little as possible. Its single job is to decide whether this frame holds a
-// job application; the ~40 KB engine is dynamically imported only if it does.
+// job application; the engine is injected by the service worker only if it does.
 //
 // v1 instead injected four scripts totalling ~110 KB into every frame of every
 // page, then immediately started a document-wide MutationObserver. That cost
@@ -25,7 +25,7 @@
   // host-level entry would auto-fill a job search with someone's name.
   const ATS_HOST = new RegExp("(^|\\.)(" + [
     // The big five
-    "greenhouse\\.io", "lever\\.co", "myworkdayjobs\\.com", "myworkdaysite\\.com",
+    "greenhouse\\.io", "lever\\.co", "myworkdayjobs\\.com", "myworkdaysite\\.com", "myworkday\\.com",
     "ashbyhq\\.com",
     // Mid-market SaaS boards
     "workable\\.com", "smartrecruiters\\.com", "icims\\.com", "taleo\\.net",
@@ -59,7 +59,7 @@
 
   const URL_HINT = /\/(apply|application|applications|job|jobs|career|careers|vacanc|opening|position|positions|recruit|recruitment|recruiting|candidate|candidateportal|posting|postings|requisition|internship|hiring|talent|joinus|join-us|work-with-us|prescreen|gethired|indeedapply)(\/|$|\?)|gh_jid|lever-|\bjobId=|\breq(uisition)?[Ii]d=|\/forms?\/|\/viewform|\/viewjob|smartapply/i;
 
-  const TEXT_HINT = /\b(resume|résumé|cv|cover letter|work authorization|work authorisation|apply for|application form|first name|legal name|desired salary|notice period|why do you want to work)\b/i;
+  const TEXT_HINT = /\b(resume|résumé|cv|cover letter|work authorization|work authorisation|apply for|application form|first name|full name|legal name|desired salary|notice period|why do you want to work|linkedin|github|portfolio|years of experience)\b/i;
 
   // The same words, in the hostname rather than the path. A company's own board
   // is almost always at careers.acme.com or jobs.acme.com, and its landing path
@@ -75,7 +75,7 @@
   let observer = null;
 
   const ARIA_CONTROL =
-    '[role="textbox"],[role="radiogroup"],[role="listbox"],[role="combobox"],[role="switch"]';
+    '[role="textbox"],[role="radiogroup"],[role="listbox"],[role="combobox"],[role="switch"],[role="checkbox"]';
 
   /**
    * Count fillable controls under one root. Kept separate from the caller so the
@@ -147,6 +147,10 @@
     // not enough on a heavy board — LinkedIn and Workday spend that much on
     // chrome before the form's own words start.
     const text = document.body?.textContent?.slice(0, 40000) || "";
+    const ordinary = /\b(checkout|shopping cart|payment details|sign in|log in|reset password)\b/i.test(text);
+    const employment = /\b(job application|employment application|apply for (this|the) (job|role|position)|resume|résumé|curriculum vitae|cover letter|work authori[sz]ation)\b/i.test(text);
+    if (!hostIsATS && ordinary && !employment) return false;
+    if (!hostIsATS && !urlHints && !GENERIC_FORM_HOST.test(location.hostname)) return !hasPassword && fillable >= 3 && employment;
 
     // On a general form builder, only auto-fill when the page reads as a job
     // application. A Google Form is just as likely to be a lunch order, and
@@ -154,23 +158,42 @@
     // nothing. The toolbar button still forces a fill anywhere.
     if (GENERIC_FORM_HOST.test(location.hostname)) return TEXT_HINT.test(text);
 
-    return fillable >= 4 && TEXT_HINT.test(text);
+    return fillable >= 3 && TEXT_HINT.test(text);
   }
 
+  /**
+   * Ask the service worker to inject the engine into THIS frame.
+   *
+   * Not a dynamic import any more. That required listing the engine in
+   * web_accessible_resources, which hands every page you visit a
+   * chrome-extension://<id>/... URL it can probe to detect the extension.
+   * `use_dynamic_url` was meant to close that hole and does hide the URL — but
+   * Chrome will not serve a module-script fetch from the rotating GUID origin
+   * it returns, so `import()` failed with "Failed to fetch dynamically imported
+   * module" on every site and the engine never loaded at all.
+   *
+   * chrome.scripting.executeScript has neither problem: nothing is
+   * web-accessible, so there is nothing to probe, and the file is injected
+   * rather than fetched, so no page CSP sits in the way. The worker injects the
+   * flattened classic build (src/engine/bundle.js, built by `node bundle.mjs`),
+   * because executeScript cannot run ES modules.
+   *
+   * The bundle boots itself and is guarded against being injected twice, so
+   * calling this more than once — automatic detection, then "Fill this page" —
+   * is safe.
+   */
   function start() {
     observer?.disconnect();
     observer = null;
-    // Written as one expression on purpose: `import()` here is the real thing,
-    // and the test harness rewrites this exact call shape to reach it.
-    import(chrome.runtime.getURL("src/engine/index.js"))
-      .then((m) => m.boot())
+    chrome.runtime.sendMessage({ type: "rf_inject" })
       // console.error, not warn: this is the one failure that makes every
       // button in the popup report "Couldn't reach the page", and a warning
       // nobody looks at is why that reads as an unexplained dead page rather
       // than a load error with a cause attached to it.
-      .catch((err) => console.error(
-        "Apply karo: engine failed to load —", err,
-        "\n  url:", chrome.runtime.getURL("src/engine/index.js")));
+      .then((r) => {
+        if (!r?.ok) console.error("Apply karo: engine failed to load —", r?.error || "no reply");
+      })
+      .catch((err) => console.error("Apply karo: engine failed to load —", err));
   }
 
   /**
@@ -217,15 +240,18 @@
   // careers page on an unlisted host, ...) had no listener at all: the popup's
   // force-load message found no receiver and failed instantly, which is why
   // "Fill this page" reported "Can't run here" instead of actually retrying.
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type === "rf_force_load") start();
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type !== "rf_force_load") return;
+    chrome.runtime.sendMessage({ type: "rf_inject" }).then(sendResponse,
+      (err) => sendResponse({ ok: false, state: "error", error: err.message }));
+    return true;
   });
 
   // A page with no URL signal and no ATS/known-form host is almost never an
   // application — skip the automatic probe there. Bailing here means the vast
   // majority of browsing costs one regex test; it does NOT skip registering
   // the listener above, so a manual "Fill this page" still works everywhere.
-  if (!hostIsATS && !urlHints && !GENERIC_FORM_HOST.test(location.hostname)) return;
+  const unfamiliar = !hostIsATS && !urlHints && !GENERIC_FORM_HOST.test(location.hostname);
 
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 150));
 
@@ -268,10 +294,16 @@
 
   idle(() => {
     if (probe()) return;
+    if (unfamiliar) {
+      const tally = { fillable: 0, hasFile: false, hasPassword: false };
+      countIn(document, tally);
+      // No long-lived observer on ordinary articles or account pages.
+      if (tally.fillable < 2 || tally.hasPassword) return;
+    }
 
     // Single-page job boards (and form builders that render late) fill in their
     // fields after routing. Watch briefly, then give up.
-    let deadline = Date.now() + 25000;
+    let deadline = Date.now() + (unfamiliar ? 8000 : 25000);
     let seenUrl = location.href;
 
     const stop = () => { observer?.disconnect(); observer = null; };
@@ -297,6 +329,6 @@
 
     // A hard outer cap, so a page that never stops mutating cannot keep this
     // alive forever.
-    setTimeout(stop, 120000);
+    setTimeout(stop, unfamiliar ? 10000 : 120000);
   }, { timeout: 1500 });
 })();

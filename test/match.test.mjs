@@ -77,6 +77,20 @@ const CASES = [
   [{ label: "Will you now or in the future require sponsorship for employment visa status?",
      kind: "radiogroup", name: "sponsorship" }, "sponsorship"],
 
+  // ── ATS Standard Questions (Workday, Greenhouse, Ashby, Lever) ──
+  [{ label: "Electronic Signature", automationId: "electronicSignature" }, "signature"],
+  [{ label: "Date Signed", automationId: "dateSigned" }, "signatureDate"],
+  [{ label: "Non-Compete Agreement", automationId: "nonCompeteAgreement" }, "nonCompete"],
+  [{ label: "Government Official", automationId: "governmentOfficial" }, "governmentOfficial"],
+  [{ label: "Reliable Transportation", automationId: "reliableTransportation" }, "reliableTransportation"],
+  [{ label: "Suffix", automationId: "legalNameSection_suffix" }, "suffix"],
+  [{ label: "County", automationId: "addressSection_county" }, "county"],
+  [{ label: "Signature", name: "job_application[signature]" }, "signature"],
+  [{ label: "Signature Date", name: "job_application[signature_date]" }, "signatureDate"],
+  [{ label: "Are you subject to any non-compete agreements?", name: "non_compete" }, "nonCompete"],
+  [{ label: "Do you have access to reliable transportation?", name: "reliable_transportation" }, "reliableTransportation"],
+  [{ label: "Have you ever been convicted of a felony?", name: "felony" }, "criminalRecord"],
+
   // ── Must NOT match ──
   [{ label: "Reference Name", name: "reference_name" }, null],
   [{ label: "Emergency Contact Phone", name: "emergency_phone", type: "tel" }, null],

@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "id": "worker-restart-observes-cached-result",
+      "stopped": true,
+      "state": "completed",
+      "error": "",
+      "value": "Avery",
+      "pass": true
+    },
+    {
+      "id": "worker-restart-unknown-run-no-replay",
+      "stopped": true,
+      "state": "interrupted",
+      "error": "The worker restarted before the page acknowledged the run. Review before retrying.",
+      "value": "My reviewed edit",
+      "pass": true
+    }
+  ],
+  "limitations": [
+    "Synthetic local form; AI disabled. Worker stopped via Chromium DevTools."
+  ]
+}

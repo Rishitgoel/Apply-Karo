@@ -18,9 +18,16 @@ import {
   readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, rmSync, existsSync
 } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { buildBundle } from "./bundle.mjs";
 
 const ROOT = import.meta.dirname;
 const OUT_DIR = join(ROOT, "dist");
+
+// Always rebuild the engine bundle first. It is a generated file that the
+// service worker injects by name, and nothing in the checks below would notice
+// it had gone stale — the zip would build clean and ship an engine several
+// edits behind the source it was supposedly built from.
+const bundle = buildBundle();
 
 // Individual files, and directories shipped whole (filtered by extension).
 const SHIP_FILES = [
@@ -130,6 +137,23 @@ for (const ref of referenced) {
 
 if (!manifest.version) problems.push("manifest has no version");
 if (!manifest.commands?.["fill-page"]) problems.push("manifest lost the fill-page command");
+
+// The engine reaches the page through executeScript, so its filename appears
+// only in background.js — no manifest reference, and therefore no coverage from
+// the check above. An extension that ships without it installs fine and then
+// cannot fill anything.
+if (!shipped.has(bundle.path)) problems.push(`engine bundle is not shipped: ${bundle.path}`);
+if (!manifest.permissions?.includes("scripting")) {
+  problems.push("manifest lost the scripting permission — the engine cannot be injected without it");
+}
+for (const war of manifest.web_accessible_resources || []) {
+  for (const res of war.resources || []) {
+    // Re-exposing the engine would undo the reason the bundle exists: a
+    // predictable chrome-extension:// URL any page can probe to fingerprint
+    // the extension.
+    if (/^src\//.test(res)) problems.push(`engine source is web-accessible again: ${res}`);
+  }
+}
 
 if (problems.length) {
   console.error("Build failed:\n" + problems.map((p) => `  - ${p}`).join("\n"));

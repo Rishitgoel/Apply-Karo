@@ -1,0 +1,492 @@
+{
+  "results": [
+    {
+      "id": "toolbar-cold-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass",
+      "footer": "Filled 2 of 2 fields. Review before submitting."
+    },
+    {
+      "id": "on-page-after-cold-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "diagnostics-export-redacted",
+      "finding": "Phase0",
+      "expected": true,
+      "actual": true,
+      "status": "pass",
+      "events": 20
+    },
+    {
+      "id": "diagnostics-opt-out-clears",
+      "finding": "Phase0",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass"
+    },
+    {
+      "id": "toolbar-warm-start",
+      "finding": "F14",
+      "expected": {
+        "value": "Avery",
+        "completed": true
+      },
+      "actual": {
+        "value": "Avery",
+        "completed": true
+      },
+      "status": "pass",
+      "footer": "Filled 2 of 2 fields. Review before submitting.",
+      "logs": [
+        "Apply karo [top frame]: filling — 2 fields to work through…",
+        "Apply karo [top frame]: 2/2 fields in 469ms — manual pass"
+      ]
+    },
+    {
+      "id": "review-lists-every-field",
+      "finding": "Phase6",
+      "expected": 2,
+      "actual": 2,
+      "status": "pass"
+    },
+    {
+      "id": "review-verified-facts-have-sources",
+      "finding": "Phase6",
+      "expected": true,
+      "actual": true,
+      "status": "pass"
+    },
+    {
+      "id": "review-panel-renders-four-states",
+      "finding": "Phase6",
+      "expected": 4,
+      "actual": 4,
+      "status": "pass"
+    },
+    {
+      "id": "review-row-focuses-control",
+      "finding": "Phase6",
+      "expected": "first",
+      "actual": "first",
+      "status": "pass"
+    },
+    {
+      "id": "review-confirmation-writes-value",
+      "finding": "Phase6",
+      "expected": "Reviewed Avery",
+      "actual": "Reviewed Avery",
+      "status": "pass"
+    },
+    {
+      "id": "review-confirmed-answer-state",
+      "finding": "Phase6",
+      "expected": "Verified facts",
+      "actual": "Verified facts",
+      "status": "pass"
+    },
+    {
+      "id": "review-source-undo-restores-control",
+      "finding": "Phase6",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "review-actions-reject-other-owner",
+      "finding": "Phase6",
+      "expected": false,
+      "actual": false,
+      "status": "pass"
+    },
+    {
+      "id": "review-keeps-final-submission-manual",
+      "finding": "Phase6",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass"
+    },
+    {
+      "id": "popup-closure-during-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "delayed-engine-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "repeated-starts-complete",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass",
+      "replies": [
+        {
+          "ok": true,
+          "frames": [
+            {
+              "frameId": 0,
+              "documentId": "DAB818718E89A48AC654C42337D89D46",
+              "surface": {
+                "frames": [],
+                "openShadowRoots": 0,
+                "uninspectableHosts": 0
+              },
+              "url": "http://127.0.0.1:63828/neutral/warm"
+            }
+          ],
+          "runId": "4140356b-0637-4327-bdd4-f7ed61b9a2eb",
+          "tabId": 666159189,
+          "documentId": "DAB818718E89A48AC654C42337D89D46",
+          "state": "completed",
+          "startedAt": 1791381097827,
+          "updatedAt": 1791381099868,
+          "deadline": 1791381217827,
+          "filled": 2,
+          "total": 2,
+          "empty": 0,
+          "error": "",
+          "detail": "Checking fields…",
+          "drafts": 0,
+          "deferred": 0,
+          "aiError": ""
+        },
+        {
+          "ok": true,
+          "frames": [
+            {
+              "frameId": 0,
+              "documentId": "DAB818718E89A48AC654C42337D89D46",
+              "surface": {
+                "frames": [],
+                "openShadowRoots": 0,
+                "uninspectableHosts": 0
+              },
+              "url": "http://127.0.0.1:63828/neutral/warm"
+            }
+          ],
+          "runId": "4140356b-0637-4327-bdd4-f7ed61b9a2eb",
+          "tabId": 666159189,
+          "documentId": "DAB818718E89A48AC654C42337D89D46",
+          "state": "completed",
+          "startedAt": 1791381097827,
+          "updatedAt": 1791381099868,
+          "deadline": 1791381217827,
+          "filled": 2,
+          "total": 2,
+          "empty": 0,
+          "error": "",
+          "detail": "Checking fields…",
+          "drafts": 0,
+          "deferred": 0,
+          "aiError": ""
+        }
+      ]
+    },
+    {
+      "id": "unknown-certification-zero-model-requests",
+      "finding": "Phase4",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass"
+    },
+    {
+      "id": "unconfirmed-ai-memory",
+      "finding": "F3",
+      "expected": false,
+      "actual": false,
+      "status": "pass",
+      "requests": 0,
+      "value": ""
+    },
+    {
+      "id": "sensitive-policy-all-sources",
+      "finding": "F8",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass",
+      "value": "",
+      "note": "Skipped sensitive fields must not be sent to the provider."
+    },
+    {
+      "id": "inline-preserves-inflight-edit",
+      "finding": "F7",
+      "expected": "My edit while AI was generating.",
+      "actual": "My edit while AI was generating.",
+      "status": "pass"
+    },
+    {
+      "id": "inline-supported-draft-written",
+      "finding": "Phase1",
+      "expected": "I built internal tools at Example Labs.",
+      "actual": "I built internal tools at Example Labs.",
+      "status": "pass",
+      "generated": {
+        "answer": "I built internal tools at Example Labs.",
+        "ok": true
+      }
+    },
+    {
+      "id": "inline-draft-review-state",
+      "finding": "Phase6",
+      "expected": "Drafts to review",
+      "actual": "Drafts to review",
+      "status": "pass"
+    },
+    {
+      "id": "inline-undo-preserves-later-edit",
+      "finding": "Phase1",
+      "expected": "My later correction.",
+      "actual": "My later correction.",
+      "status": "pass"
+    },
+    {
+      "id": "legacy-memory-quarantined",
+      "finding": "Phase1",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "legacy-explicit-confirmation",
+      "finding": "Phase1",
+      "expected": "user-confirmed",
+      "actual": "user-confirmed",
+      "status": "pass"
+    },
+    {
+      "id": "confirmed-memory-reused",
+      "finding": "Phase1",
+      "expected": "Legacy Avery",
+      "actual": "Legacy Avery",
+      "status": "pass"
+    },
+    {
+      "id": "embedded-frame-start-ready",
+      "finding": "Phase1",
+      "expected": {
+        "value": "Avery",
+        "frames": 2
+      },
+      "actual": {
+        "value": "Avery",
+        "frames": 2
+      },
+      "status": "pass"
+    },
+    {
+      "id": "review-aggregates-child-frame",
+      "finding": "Phase6",
+      "expected": true,
+      "actual": true,
+      "status": "pass"
+    },
+    {
+      "id": "review-action-routes-to-owning-frame",
+      "finding": "Phase6",
+      "expected": true,
+      "actual": true,
+      "status": "pass"
+    },
+    {
+      "id": "claimed-frame-exception-terminal",
+      "finding": "Phase1",
+      "expected": true,
+      "actual": true,
+      "status": "pass",
+      "result": {
+        "ok": true,
+        "frames": [
+          {
+            "frameId": 0,
+            "documentId": "5712D7D7155A3850F62CA91FFE4E3985",
+            "surface": {
+              "frames": [],
+              "openShadowRoots": 0,
+              "uninspectableHosts": 0
+            },
+            "url": "http://127.0.0.1:63828/neutral/warm"
+          }
+        ],
+        "runId": "8e2fc230-c2eb-48a0-8dda-e60308cef2b6",
+        "tabId": 666159233,
+        "documentId": "5712D7D7155A3850F62CA91FFE4E3985",
+        "state": "needs_attention",
+        "startedAt": 1791381115009,
+        "updatedAt": 1791381117054,
+        "deadline": 1791381235009,
+        "filled": 0,
+        "total": 0,
+        "empty": 0,
+        "error": "Synthetic context failure",
+        "detail": "",
+        "drafts": 0,
+        "deferred": 0,
+        "aiError": "Synthetic context failure"
+      }
+    },
+    {
+      "id": "frame-exception-retry-clears-busy",
+      "finding": "Phase1",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "inline-question-refresh",
+      "finding": "F6",
+      "expected": true,
+      "actual": true,
+      "status": "pass",
+      "questionText": "Question: Describe your Java experience.\nView full question\nCorrect detected question"
+    },
+    {
+      "id": "all-81-fields-accounted-for",
+      "finding": "F10",
+      "expected": 81,
+      "actual": 81,
+      "status": "pass",
+      "requests": 11
+    },
+    {
+      "id": "unknown-declarations-not-guessed",
+      "finding": "Phase1",
+      "expected": {
+        "license": "",
+        "citizenship": "",
+        "consent": false
+      },
+      "actual": {
+        "license": "",
+        "citizenship": "",
+        "consent": false
+      },
+      "status": "pass"
+    },
+    {
+      "id": "job-context-bound-to-application",
+      "finding": "F12",
+      "expected": false,
+      "actual": false,
+      "status": "pass",
+      "requests": 1,
+      "note": "Worker request with absent application context; no live page identity claim."
+    },
+    {
+      "id": "custom-widget-correction-learning",
+      "finding": "F13",
+      "expected": true,
+      "actual": true,
+      "status": "pass"
+    },
+    {
+      "id": "custom-correction-reused-after-reload",
+      "finding": "Phase6",
+      "expected": "Canada",
+      "actual": "Canada",
+      "status": "pass"
+    },
+    {
+      "id": "correction-withheld-different-meaning",
+      "finding": "Phase6",
+      "expected": "Select one",
+      "actual": "Select one",
+      "status": "pass"
+    },
+    {
+      "id": "destroyed-custom-menu-correction-reused",
+      "finding": "Phase6",
+      "expected": "Canada",
+      "actual": "Canada",
+      "status": "pass"
+    },
+    {
+      "id": "review-unresolved-field-accounting",
+      "finding": "Phase6",
+      "expected": 4,
+      "actual": 4,
+      "status": "pass"
+    },
+    {
+      "id": "review-policy-exclusion-explained",
+      "finding": "Phase6",
+      "expected": true,
+      "actual": true,
+      "status": "pass"
+    },
+    {
+      "id": "missing-answer-collected-once-for-equivalent-fields",
+      "finding": "Phase6",
+      "expected": [
+        "5550100123",
+        "5550100123"
+      ],
+      "actual": [
+        "5550100123",
+        "5550100123"
+      ],
+      "status": "pass"
+    },
+    {
+      "id": "review-report-redacts-by-default",
+      "finding": "Phase6",
+      "expected": true,
+      "actual": true,
+      "status": "pass"
+    },
+    {
+      "id": "review-learning-zero-submissions",
+      "finding": "Phase6",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass"
+    },
+    {
+      "id": "memory-search-and-edit-reused",
+      "finding": "Phase6",
+      "expected": [
+        "5550200123",
+        "5550200123"
+      ],
+      "actual": [
+        "5550200123",
+        "5550200123"
+      ],
+      "status": "pass"
+    },
+    {
+      "id": "memory-delete-undo-restores-reviewed-answer",
+      "finding": "Phase6",
+      "expected": true,
+      "actual": true,
+      "status": "pass"
+    },
+    {
+      "id": "missing-frame-result-bounded",
+      "finding": "F14",
+      "expected": false,
+      "actual": false,
+      "status": "pass",
+      "elapsedMs": 8813,
+      "note": "Test deadline 12 seconds; production coordinator ceiling is 120 seconds. Result loss deliberately injected."
+    }
+  ],
+  "passed": true,
+  "bundleHash": "2a32a7668360872e2b3ece810f8d6c57f79f6be5ef9aba50f6940c76fd01501f",
+  "evidenceKind": "real-extension-local-fixtures-mocked-provider",
+  "limitations": [
+    "No live provider or human usability trial.",
+    "Native toolbar dismissal simulated by extension tab."
+  ]
+}

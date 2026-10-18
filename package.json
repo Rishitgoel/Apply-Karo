@@ -1,0 +1,26 @@
+{
+  "name": "apply-karo-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/eval/unit.mjs",
+    "eval:phase0": "node test/eval/run.mjs",
+    "eval:phase1": "node test/eval/run.mjs --phase1",
+    "eval:lifecycle": "node test/eval/lifecycle.mjs",
+    "eval:phase2-controls": "node test/eval/phase2.mjs",
+    "eval:phase2": "node test/eval/run.mjs --phase2",
+    "eval:phase3": "node test/eval/phase3.mjs",
+    "eval:phase4": "node test/eval/phase4.mjs",
+    "eval:phase5": "node test/eval/phase5.mjs",
+    "eval:phase6": "node test/eval/phase6.mjs",
+    "eval:phase7": "node test/eval/phase7.mjs",
+    "eval:phase7-live": "node test/eval/live-phase7.mjs",
+    "eval:phase7-trials": "node test/eval/measure-phase7.mjs",
+    "eval:phase7-tools": "node test/eval/phase7-tools.mjs",
+    "trials": "node test/eval/trial-server.mjs",
+    "eval:strict": "node test/eval/run.mjs --strict",
+    "eval:contracts": "node test/eval/regressions.mjs",
+    "build": "node build.mjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}

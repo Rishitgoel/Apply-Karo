@@ -74,6 +74,121 @@ const CLASSES = {
     citizen: ["citizen", "permanent resident", "green card", "national"],
     authorized: ["authorized", "authorised", "work permit", "opt", "cpt", "h1b", "ead", "no sponsorship"],
     sponsorship: ["require sponsorship", "need sponsorship", "will require", "sponsorship required"]
+  },
+  authorizedToWork: {
+    yes: ["yes", "i am authorized", "legally authorized", "authorized to work", "eligible to work", "have the legal right", "citizen", "permanent resident", "no sponsorship required"],
+    no: ["no", "not authorized", "not eligible", "cannot work", "require sponsorship"]
+  },
+  sponsorship: {
+    no: ["no", "do not require", "will not require", "no sponsorship", "do not need", "not now or in the future"],
+    yes: ["yes", "require sponsorship", "will require", "need sponsorship", "require visa sponsorship", "sponsorship now or in the future"]
+  },
+  willingToRelocate: {
+    yes: ["yes", "willing", "open to relocation", "relocate", "willing to relocate"],
+    no: ["no", "not willing", "cannot relocate", "no relocation"]
+  },
+  legalAge: {
+    yes: ["yes", "18 or older", "over 18", "at least 18", "legal age to work", "18 years of age or older"],
+    no: ["no", "under 18", "not 18"]
+  },
+  formerEmployee: {
+    no: ["no", "never", "not previously employed", "have not worked here"],
+    yes: ["yes", "previously employed", "former employee", "have worked here"]
+  },
+  relativeEmployed: {
+    no: ["no", "none", "no relatives"],
+    yes: ["yes", "relative employed", "have relatives"]
+  },
+  phoneType: {
+    mobile: ["mobile", "cell", "cellular", "smart phone", "cell phone"],
+    home: ["home", "landline", "residential"],
+    work: ["work", "office", "business"]
+  },
+  workLocationPreference: {
+    remote: ["remote", "work from home", "wfh", "virtual", "telecommute"],
+    hybrid: ["hybrid", "flexible", "partially remote"],
+    onsite: ["onsite", "on site", "in office", "office", "in person", "workplace"]
+  },
+  pronouns: {
+    he: ["he him", "he him his", "he/him", "he/him/his"],
+    she: ["she her", "she her hers", "she/her", "she/her/hers"],
+    they: ["they them", "they them theirs", "they/them", "they/them/theirs"],
+    declined: ["prefer not", "decline", "do not wish", "choose not"]
+  },
+  salutation: {
+    mr: ["mr", "mr.", "mister"],
+    ms: ["ms", "ms.", "miss"],
+    mrs: ["mrs", "mrs."],
+    dr: ["dr", "dr.", "doctor"],
+    mx: ["mx", "mx."]
+  },
+  noticePeriod: {
+    immediate: ["immediately", "immediate", "none", "0", "0 days", "available immediately", "no notice"],
+    twoWeeks: ["2 weeks", "two weeks", "14 days", "2 to 4 weeks"],
+    oneMonth: ["1 month", "one month", "30 days", "4 weeks", "1 to 2 months"],
+    twoMonths: ["2 months", "two months", "60 days", "8 weeks"],
+    threeMonths: ["3 months", "three months", "90 days", "3+ months", "more than 2 months"]
+  },
+  consent: {
+    yes: ["yes", "i agree", "agree", "i accept", "accept", "i consent", "consent", "i certify", "certify", "i acknowledge", "acknowledge", "i understand", "i confirm"],
+    no: ["no", "disagree", "decline", "do not consent"]
+  },
+  backgroundCheck: {
+    yes: ["yes", "willing", "consent", "i agree", "agree", "willing to undergo"],
+    no: ["no", "unwilling", "not willing", "decline"]
+  },
+  travelPreference: {
+    yes: ["yes", "willing", "open to travel", "willing to travel"],
+    no: ["no", "not willing", "cannot travel", "no travel"]
+  },
+  driversLicense: {
+    yes: ["yes", "valid driver's license", "have license", "licensed"],
+    no: ["no", "no license", "do not have"]
+  },
+  securityClearance: {
+    no: ["no", "none", "no clearance", "do not possess"],
+    yes: ["yes", "active clearance", "secret", "top secret", "ts/sci", "confidential"]
+  },
+  nonCompete: {
+    no: ["no", "not bound", "none", "i am not subject", "not subject", "i do not have", "no, i am not", "not applicable"],
+    yes: ["yes", "subject to", "i am bound", "have a non compete", "yes, i am"]
+  },
+  reliableTransportation: {
+    yes: ["yes", "i do", "reliable transportation", "have transportation", "yes, i have", "access to reliable"],
+    no: ["no", "i do not", "no transportation", "no, i do not"]
+  },
+  governmentOfficial: {
+    no: ["no", "neither", "not a government official", "none", "i am not", "no, i am not"],
+    yes: ["yes", "i am a government official", "yes, i am"]
+  },
+  hispanicLatino: {
+    yes: ["yes", "hispanic", "latino", "hispanic or latino", "yes, hispanic or latino", "yes, i am hispanic or latino"],
+    no: ["no", "not hispanic", "not latino", "not hispanic or latino", "no, not hispanic or latino", "no, i am not hispanic or latino"],
+    declined: ["decline", "prefer not", "do not wish", "choose not to answer"]
+  },
+  race: {
+    hispanic: ["hispanic", "latino", "latina", "chicano", "spanish origin"],
+    asian: ["asian", "asian american", "indian", "chinese", "filipino", "japanese", "korean", "vietnamese"],
+    black: ["black", "african american"],
+    white: ["white", "caucasian", "european"],
+    native: ["american indian", "alaska native", "indigenous", "native american"],
+    pacific: ["native hawaiian", "pacific islander"],
+    twoOrMore: ["two or more", "multiracial", "two or more races"],
+    declined: ["decline", "prefer not", "do not wish", "choose not"]
+  },
+  employmentType: {
+    fulltime: ["full time", "full-time", "regular", "permanent", "direct hire"],
+    parttime: ["part time", "part-time"],
+    contract: ["contract", "contractor", "temporary", "temp", "consultant", "c2c", "w2"],
+    internship: ["intern", "internship", "co-op", "trainee", "student"]
+  },
+  currentJob: {
+    yes: ["yes", "current", "currently work here", "present", "i currently work here", "yes, current employer"],
+    no: ["no", "former", "past", "no longer work here", "not current", "no, past employer"]
+  },
+  criminalRecord: {
+    no: ["no", "never", "no criminal record", "have not been convicted", "no felonies", "i have never been convicted"],
+    yes: ["yes", "have been convicted", "yes, i have a criminal record", "felony conviction"]
   }
 };
 
@@ -95,11 +210,12 @@ export function classify(ruleId, text) {
   let bestLen = 0;
   for (const [cls, keywords] of Object.entries(table)) {
     for (const kw of keywords) {
-      if (kw.length <= bestLen) continue;
+      const k = norm(kw);
+      if (!k || k.length <= bestLen) continue;
       // Word-boundary containment, so "be" does not match "before".
-      if (t === kw || t.startsWith(kw + " ") || t.endsWith(" " + kw) || t.includes(" " + kw + " ")) {
+      if (t === k || t.startsWith(k + " ") || t.endsWith(" " + k) || t.includes(" " + k + " ")) {
         best = cls;
-        bestLen = kw.length;
+        bestLen = k.length;
       }
     }
   }
@@ -153,10 +269,21 @@ export function numberIn(text) {
  */
 export function semanticScore(ruleId, optionLabel, optionValue, target) {
   // 1. Canonical class agreement — the "B.Tech" vs "Bachelor's Degree" case.
-  const wantClass = classify(ruleId, target);
-  if (wantClass) {
-    if (classify(ruleId, optionLabel) === wantClass) return 0.95;
-    if (optionValue && classify(ruleId, optionValue) === wantClass) return 0.93;
+  if (ruleId) {
+    const wantClass = classify(ruleId, target);
+    if (wantClass) {
+      if (classify(ruleId, optionLabel) === wantClass) return 0.95;
+      if (optionValue && classify(ruleId, optionValue) === wantClass) return 0.93;
+    }
+  } else {
+    // Try matching across all classes when ruleId is unknown (e.g. from AI)
+    for (const rId of Object.keys(CLASSES)) {
+      const wantClass = classify(rId, target);
+      if (wantClass) {
+        if (classify(rId, optionLabel) === wantClass) return 0.95;
+        if (optionValue && classify(rId, optionValue) === wantClass) return 0.93;
+      }
+    }
   }
 
   // 2. Yes/no agreement, however verbosely the option phrases it.
@@ -167,16 +294,16 @@ export function semanticScore(ruleId, optionLabel, optionValue, target) {
   }
 
   // 3. Numeric bucketing for experience-style dropdowns.
-  if (ruleId === "yearsOfExperience") {
+  if (ruleId === "yearsOfExperience" || (!ruleId && rangeContains(optionLabel, numberIn(target) ?? -1))) {
     const n = numberIn(target);
     if (n !== null && rangeContains(optionLabel, n)) return 0.92;
   }
 
   // 4. Dialling-code dropdowns render the same code half a dozen ways:
   //    "+91", "91", "India (+91)", "IN +91". Compare digits, not text.
-  if (ruleId === "phoneCountryCode") {
+  if (ruleId === "phoneCountryCode" || (!ruleId && /^\+?\d{1,4}$/.test(String(target).trim()))) {
     const want = String(target).replace(/\D/g, "");
-    if (want) {
+    if (want && want.length <= 4) {
       for (const src of [optionValue, optionLabel]) {
         if (!src) continue;
         const codes = String(src).match(/\+\s*(\d{1,4})/) || String(src).match(/^\s*(\d{1,4})\s*$/);
@@ -319,4 +446,18 @@ export function datePartValue(parts, part) {
   if (part === "day") return parts.day ? String(parts.day) : "1";
   if (part === "month") return parts.month ? String(parts.month) : "";
   return "";
+}
+
+/** Parse a timeframe like "Jan 2022 - Present" or "2020 - 2023" into start and end parts. */
+export function parseTimeframe(text) {
+  const t = String(text || "").trim();
+  if (!t) return { start: null, end: null };
+  const parts = t.split(/\s*(?:[-–—]|\bto\b)\s*/i).map((s) => s.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return { start: parts[0], end: parts[1] };
+  }
+  if (parts.length === 1) {
+    return { start: parts[0], end: null };
+  }
+  return { start: null, end: null };
 }

@@ -3,7 +3,8 @@
 import { assign, tokenize, fieldKey, RULE_BY_ID, DEMOTION } from "../src/shared/rules.js";
 import { splitPhone, parseDate, formatDate, datePartValue, semanticScore } from "../src/shared/values.js";
 import {
-  resolvePath, resumeTextIsCurrent, DEFAULT_RESUME_META, safeHttpUrl
+  resolvePath, resumeTextIsCurrent, DEFAULT_RESUME_META, safeHttpUrl,
+  extensionAlive, isContextGone
 } from "../src/shared/schema.js";
 
 let pass = 0;
@@ -103,7 +104,7 @@ check("date part: month", datePartValue(may2027, "month"), "5");
   const before = assign([f], noOpts).get(0);
   check("location matches by default", before?.ruleId, "location");
 
-  const demoted = assign([f], { ...noOpts, isDemoted: (fl, r) => fieldKey(fl) === "location" && r === "location" });
+  const demoted = assign([f], { ...noOpts, isDemoted: (fl, r) => fieldKey(fl) === fieldKey(f) && r === "location" });
   check("demoted pairing loses the field", demoted.get(0)?.ruleId ?? null, null);
 
   // Demotion is a penalty, not a ban: an ATS attribute still wins through.
@@ -112,8 +113,8 @@ check("date part: month", datePartValue(may2027, "month"), "5");
   check("strong ATS signal survives demotion", still.get(0)?.ruleId, "city");
   check("penalty is smaller than the ATS score", DEMOTION < 98, true);
 
-  check("fieldKey ignores punctuation/case", fieldKey({ label: "Current Location *" }), "current location");
-  check("fieldKey falls back to name", fieldKey({ label: "", name: "work_auth" }), "work auth");
+  check("fieldKey ignores punctuation/case", fieldKey({ label: "Current Location *" }), fieldKey({ label: "current location" }));
+  check("fieldKey falls back to name", fieldKey({ label: "", name: "work_auth" }), fieldKey({ label: "work auth" }));
 }
 
 // ─── 6. Resume text freshness ────────────────────────────────────────────────
@@ -192,6 +193,32 @@ check("date part: month", datePartValue(may2027, "month"), "5");
   // startsWith.
   check("scheme matching is not case-sensitive", safeHttpUrl("HTTPS://acme.com/x"), "HTTPS://acme.com/x");
   check("a null is not a URL", safeHttpUrl(null), "");
+}
+
+// ─── A page that has outlived the extension ──────────────────────────────────
+//
+// Reloading an unpacked build leaves the already-injected script talking to a
+// runtime that no longer exists. Everything it does then fails asynchronously,
+// so this has to be detectable *before* the call rather than only from what it
+// throws.
+{
+  check("no runtime at all reads as gone", extensionAlive(), false);
+  check("chrome's own wording is recognised",
+    isContextGone(new Error("Extension context invalidated.")), true);
+
+  globalThis.chrome = { runtime: { id: "abc" } };
+  check("a live runtime reads as alive", extensionAlive(), true);
+  // The check must not swallow ordinary failures — a spent quota reported as
+  // "reload the page" sends the user to the one fix that will not help.
+  check("an ordinary failure is not mistaken for it",
+    isContextGone(new Error("Groq has no quota left (429).")), false);
+
+  // The port is gone the moment the id is, which is before any call throws.
+  globalThis.chrome = { runtime: {} };
+  check("a runtime with no id is a dead port", extensionAlive(), false);
+  check("and any error from it counts as the same failure",
+    isContextGone(new Error("whatever")), true);
+  delete globalThis.chrome;
 }
 
 console.log(`\n  ${pass}/${pass + fails.length} passed\n`);

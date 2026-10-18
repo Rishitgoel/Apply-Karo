@@ -978,6 +978,63 @@ body.popup {
 .quick:disabled { opacity: .45; cursor: not-allowed; }
 .quick svg { width: 15px; height: 15px; }
 
+/* ── The captured posting ────────────────────────────────────────────────── */
+
+.job-name { font-size: 12.5px; font-weight: 600; }
+.job-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.job-grid .quick { flex-direction: row; padding: 7px 8px; }
+
+.job-text {
+  width: 100%;
+  padding: 7px 9px;
+  font: inherit; font-size: 11.5px; line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+.job-text:focus { outline: none; border-color: var(--accent); }
+
+.job-out {
+  margin-top: 9px;
+  padding: 9px;
+  max-height: 260px; overflow: auto;
+  background: var(--bg-inset);
+  border-radius: var(--radius-sm);
+}
+.job-out .top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.job-out .score { font-size: 19px; font-weight: 650; letter-spacing: -.02em; line-height: 1; }
+.job-out .score.strong { color: var(--success); }
+.job-out .score.fair   { color: var(--warning); }
+.job-out .score.weak   { color: var(--danger); }
+.job-out .sum { flex: 1; font-size: 10.5px; line-height: 1.5; color: var(--text-muted); }
+.job-out h4 {
+  margin: 8px 0 3px;
+  font-size: 9.5px; font-weight: 650; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--text-faint);
+}
+.job-out ul { margin: 0; padding: 0; list-style: none; }
+.job-out li {
+  position: relative;
+  margin-bottom: 2px; padding-left: 13px;
+  font-size: 10.5px; line-height: 1.5; color: var(--text);
+}
+.job-out li::before { position: absolute; left: 0; top: 0; }
+.job-out li.yes::before { content: "✓"; color: var(--success); }
+.job-out li.no::before  { content: "•"; color: var(--warning); }
+.job-out li.blocking::before { content: "!"; color: var(--danger); font-weight: 700; }
+.job-out li em { font-style: normal; color: var(--text-faint); }
+.job-out .letter {
+  max-height: 150px; overflow: auto;
+  padding: 8px 9px;
+  font-size: 11px; line-height: 1.6; white-space: pre-wrap;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 .status-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .status-row {
   display: flex; align-items: center; justify-content: space-between;

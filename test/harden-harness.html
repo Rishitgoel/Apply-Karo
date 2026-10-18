@@ -85,6 +85,21 @@
     <div id="email-error" class="dim">not validated yet</div>
   </fieldset>
 
+  <!-- A date answer landing on a box that only holds digits. Chrome refuses the
+       write, empties the field and logs a violation; nothing here throws. -->
+  <fieldset id="case-numeric-date">
+    <legend>Numeric date boxes</legend>
+    <label for="grad-year">Graduation year</label>
+    <input type="number" id="grad-year" name="graduation_year" min="1950" max="2100">
+    <!-- Named so nothing in it says "month": the only thing declaring what this
+         box wants is max=12, which is the signal under test. Calling it a month
+         would also merge it with the year box into one split-date control. -->
+    <label for="grad-period">Graduation period</label>
+    <input type="number" id="grad-period" name="graduation_period" min="1" max="12">
+    <label for="years-exp">Years of experience</label>
+    <input type="number" id="years-exp" name="years_experience" min="0" max="50">
+  </fieldset>
+
   <!-- A control the page has switched off must stay switched off. -->
   <fieldset id="case-disabled">
     <legend>aria-disabled control</legend>
@@ -101,7 +116,7 @@
 // failure you then go and "debug" in code that is already correct. The other
 // harnesses report a stale cache as a red result; this one refuses to have one.
 const v = `?v=${Date.now()}`;
-const { scan } = await import(`../src/engine/scan.js${v}`);
+const { scan, rawControls, whyDropped } = await import(`../src/engine/scan.js${v}`);
 const { fillSync } = await import(`../src/engine/fill.js${v}`);
 const { asBool } = await import(`../src/shared/values.js${v}`);
 
@@ -242,6 +257,67 @@ check("re-answering a switch that already agrees is not a fill",
   fillSync(scan().find((f) => f.el.id === "relocate"), "Yes"), false);
 check("…and it was not toggled off",
   document.getElementById("relocate").getAttribute("aria-checked"), "true");
+
+// ─── Dates on numeric controls ───────────────────────────────────────────────
+h2("Dates — a box that only holds digits");
+
+// "05/2027" into <input type=number> is refused by the browser, which empties
+// the field and logs "The specified value cannot be parsed, or is out of range".
+// The old path wrote it anyway; worse, plain text fills reported that as done.
+{
+  const year = document.getElementById("grad-year");
+  check("a date rule on a year box writes the year alone",
+    fillSync(byId("grad-year"), "May 2027", "graduationDate"), true);
+  check("…and the box actually holds it", year.value, "2027");
+
+  // min/max say what the field wants more reliably than its label does.
+  const period = document.getElementById("grad-period");
+  check("a box capped at 12 gets the month", fillSync(byId("grad-period"), "May 2027", "graduationDate"), true);
+  check("…as a bare number", period.value, "5");
+
+  // And the general guard: anything a constrained input refuses is not a fill.
+  const exp = document.getElementById("years-exp");
+  check("prose written at a number box is not reported as filled",
+    fillSync(byId("years-exp"), "about two years"), false);
+  check("…and the box is left as it was", exp.value, "");
+}
+
+// ─── The scanner's blind spot ────────────────────────────────────────────────
+h2("Review — the sweep that does not trust the scanner");
+
+// The failure being guarded: a component attaches its shadow root, and fills it
+// with controls afterwards. Nothing tells the scanner to drop its cached root
+// list, so those fields stay invisible to it for the life of the page — the
+// filler skips them and "what's still empty" then agrees the form is complete.
+{
+  scan();                                        // prime the shadow-root cache
+
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({ mode: "open" });
+  root.innerHTML =
+    '<label for="late-employer">Who is your current or previous employer?</label>' +
+    '<input id="late-employer" name="employer" required style="width:200px;height:24px">';
+
+  const inScan = scan().some((f) => f.el?.id === "late-employer");
+  check("the scanner misses a field added to a shadow root after its first pass", inScan, false);
+
+  const raw = rawControls();
+  const found = raw.find((el) => el.id === "late-employer");
+  check("the independent sweep finds it anyway", !!found, true);
+  check("…and it is genuinely empty", found?.value, "");
+  check("…and the page marks it required", found?.required, true);
+
+  // Having refreshed the cache, the scanner can see it too — which is what makes
+  // pressing Fill after a review actually fill the thing.
+  check("and the scan that follows now sees it",
+    scan().some((f) => f.el?.id === "late-employer"), true);
+
+  check("a control the scanner keeps reports no reason for dropping it",
+    whyDropped(document.getElementById("tos-box")), "");
+
+  host.remove();
+}
 
 // ─── Report ──────────────────────────────────────────────────────────────────
 document.getElementById("out").innerHTML =

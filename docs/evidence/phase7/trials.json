@@ -1,0 +1,7 @@
+{
+  "evidenceKind": "human-self-reported",
+  "status": "pending",
+  "workload": { "Workday": 10, "Keka": 10, "Other": 10 },
+  "setupActiveMs": null,
+  "trials": []
+}

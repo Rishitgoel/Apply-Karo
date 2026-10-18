@@ -1,0 +1,266 @@
+{
+  "measuredAt": "2026-10-07T04:36:12.948Z",
+  "results": [
+    {
+      "id": "dropdown-button",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "dropdown-button-canonical",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "dropdown-searchable",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "dropdown-searchable-canonical",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "dropdown-delayed",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "dropdown-delayed-canonical",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "dropdown-portal",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "dropdown-portal-canonical",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "dropdown-virtual",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "dropdown-virtual-canonical",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "dropdown-ambiguous",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "dropdown-revert",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "dropdown-native-revert",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "dropdown-search-only",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "typed-search-is-not-selection",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "uncommitted-search-restored",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "dropdown-hierarchical",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "dropdown-hierarchical-canonical",
+      "actual": "Software",
+      "expected": "Software",
+      "pass": true
+    },
+    {
+      "id": "dropdown-chips",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "dropdown-chips-canonical",
+      "actual": [
+        "React",
+        "Python"
+      ],
+      "expected": [
+        "React",
+        "Python"
+      ],
+      "pass": true
+    },
+    {
+      "id": "dropdown-stale",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "complete-long-question",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "ordered-multipart-question",
+      "actual": "Are you authorized to work in India without sponsorship?",
+      "expected": "Are you authorized to work in India without sponsorship?",
+      "pass": true
+    },
+    {
+      "id": "complete-description",
+      "actual": "Are you authorized to work in India without sponsorship? Only use your confirmed jurisdiction-specific facts.",
+      "expected": "Are you authorized to work in India without sponsorship? Only use your confirmed jurisdiction-specific facts.",
+      "pass": true
+    },
+    {
+      "id": "conflicting-labels-flagged",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "descriptor-stable-without-change",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "descriptor-revision-on-section-change",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "fresh-section-after-dom-reuse",
+      "actual": "experience",
+      "expected": "experience",
+      "pass": true
+    },
+    {
+      "id": "question-correction-scoped-to-template",
+      "actual": [
+        "http://127.0.0.1:54439/phase2/labels"
+      ],
+      "expected": [
+        "http://127.0.0.1:54439/phase2/labels"
+      ],
+      "pass": true
+    },
+    {
+      "id": "native-correction-keeps-contextual-key",
+      "actual": "College Town",
+      "expected": "College Town",
+      "pass": true
+    },
+    {
+      "id": "scoped-correction-reused",
+      "actual": "College Town",
+      "expected": "College Town",
+      "pass": true
+    },
+    {
+      "id": "scoped-correction-does-not-cross-section",
+      "actual": "Palo Alto",
+      "expected": "Palo Alto",
+      "pass": true
+    },
+    {
+      "id": "conditional-child-rescanned",
+      "actual": "California",
+      "expected": "California",
+      "pass": true
+    },
+    {
+      "id": "related-frame-inventory",
+      "actual": 3,
+      "expected": 3,
+      "pass": true
+    },
+    {
+      "id": "related-frame-0-filled",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "related-frame-1-filled",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "uninspectable-component-reported",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "unfamiliar-employment-form-detected",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "negative-checkout-not-detected",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "negative-login-not-detected",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "negative-search-not-detected",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    }
+  ],
+  "evidenceKind": "real-browser-and-unpacked-extension-synthetic-fixtures",
+  "limitations": [
+    "AI disabled and transport blocked.",
+    "No live Workday tenant or native toolbar interaction."
+  ]
+}

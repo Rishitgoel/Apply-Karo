@@ -1,0 +1,33 @@
+{
+  "evidenceKind": "human-self-reported",
+  "trials": 0,
+  "participants": 0,
+  "aggregateSaving": null,
+  "byFamily": {},
+  "byMaturity": {},
+  "workloadComplete": false,
+  "counterbalanced": false,
+  "saving95Interval": null,
+  "uncertaintyUnit": "paired trials conditional on this participant",
+  "manualP50Ms": null,
+  "manualP90Ms": null,
+  "assistedP50Ms": null,
+  "assistedP90Ms": null,
+  "assistedElapsedP90Ms": null,
+  "setupActiveMs": null,
+  "setupAmortized10Ms": null,
+  "setupAmortized30Ms": null,
+  "finalErrors": 0,
+  "seededErrors": 0,
+  "noticedErrors": 0,
+  "unsupportedTrials": 0,
+  "targetMeasured": false,
+  "targetPassed": false,
+  "limitations": [
+    "Self-reported measurements require independent correctness and workload review.",
+    "No inference to untested users or ATS families.",
+    "Unsupported trials remain in the aggregate denominator."
+  ],
+  "sourceSHA256": "c81bf1b14d6134ea45ebd0f13cc9b5367999ffff2183804b58450eef794111d9",
+  "measuredAt": "2026-10-07T13:29:57.093Z"
+}

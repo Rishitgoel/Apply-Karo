@@ -46,6 +46,51 @@
       </div>
     </div>
 
+    <!-- The posting this application is for.
+         Kept separate from the page card above because the two are often about
+         different pages: you capture the description on the listing, then apply
+         on a form that does not repeat it. -->
+    <section class="page-card" id="job-card">
+      <div class="row-between">
+        <div class="grow">
+          <div class="job-name truncate" id="job-name">No posting saved</div>
+          <div class="page-state truncate" id="job-meta">Open the job description and press Capture.</div>
+        </div>
+        <button class="btn btn-sm btn-ghost hidden" id="job-forget" title="Forget this posting">
+          <span data-icon="trash"></span>
+        </button>
+      </div>
+
+      <div class="job-grid mt-2">
+        <button class="quick" id="capture-btn" title="Read the job description off the page you are on">
+          <span data-icon="doc"></span>Capture
+        </button>
+        <button class="quick" id="paste-btn" title="Paste a job description in by hand">
+          <span data-icon="pen"></span>Paste
+        </button>
+      </div>
+
+      <div class="hidden" id="paste-box">
+        <textarea id="job-text" class="job-text mt-2" rows="5"
+          placeholder="Paste the job description here…"></textarea>
+        <div class="row gap-1 mt-2">
+          <button class="btn btn-sm btn-brand grow" id="paste-save">Save posting</button>
+          <button class="btn btn-sm" id="paste-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div class="job-grid mt-2">
+        <button class="btn btn-sm" id="match-btn">
+          <span data-icon="target"></span>Match me
+        </button>
+        <button class="btn btn-sm" id="letter-btn">
+          <span data-icon="sparkle"></span>Cover letter
+        </button>
+      </div>
+
+      <div class="job-out hidden" id="job-out"></div>
+    </section>
+
     <!-- Setup nudge, only while something is missing -->
     <section class="page-card hidden" id="setup-card">
       <div class="row-between mb-2">
@@ -101,6 +146,7 @@
       <div class="mini-stat"><b id="stat-learned">0</b><span>learned</span></div>
     </section>
 
+    <button class="btn btn-sm hidden" id="diagnostics-export-btn">Export local diagnostics</button>
     <div class="footer-text" id="footer-text">
       Stored on this device &middot; <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>F</kbd>
     </div>

@@ -1,0 +1,44 @@
+
+> test
+> node test/eval/unit.mjs
+
+
+  114/114 passed
+
+
+  34/34 passed
+
+corpus: 8 assertions passed
+
+  43/43 passed
+
+diagnostics: 12 assertions passed
+
+  69/69 passed
+
+
+  206/206 passed
+
+
+  19/19 passed
+
+
+  53/53 passed
+
+  53/53 passed
+
+phase1: 53 assertions passed
+phase2: 36 assertions passed
+phase3: 45 assertions passed
+phase4: 84 assertions passed
+phase5: 28 assertions passed
+phase6: 50 assertions passed
+
+  32/32 passed
+reported-form: 26 assertions passed
+
+  24/24 passed
+
+
+  40/40 passed
+

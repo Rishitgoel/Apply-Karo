@@ -1,0 +1,565 @@
+{
+  "measuredAt": "2026-10-07T05:59:59.987Z",
+  "bundleHash": "4867494a43b574bbab956b35a1866a7a27639d4fbb372d730776488b3ad42546",
+  "browser": "154.0.4258.62",
+  "evidenceKind": "real-unpacked-extension-and-synthetic-control-fixtures",
+  "checks": [
+    {
+      "id": "supported-text",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-paragraph",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-email",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-number",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-date",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-multi",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-rich",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-check",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-radiogroup",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-checkboxgroup",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "supported-dategroup",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "native-no-submit",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "revert-not-counted",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "revert-outcome",
+      "actual": "rejected",
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "id": "invalid-not-counted",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "invalid-outcome",
+      "actual": "rejected",
+      "expected": "rejected",
+      "pass": true
+    },
+    {
+      "id": "invalid-DOM-distinguished",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "stale-not-counted",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "stale-outcome",
+      "actual": "deferred",
+      "expected": "deferred",
+      "pass": true
+    },
+    {
+      "id": "upload",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "upload-error",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "upload-pending",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "workday-button",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "workday-searchable",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "workday-delayed",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "workday-portal",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "workday-virtual",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "workday-hierarchical",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "workday-chips",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "empty-search-workday-employer-a",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "recognized-clear-undo-workday-employer-a",
+      "actual": null,
+      "expected": null,
+      "pass": true
+    },
+    {
+      "id": "empty-search-workday-employer-b",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "recognized-clear-undo-workday-employer-b",
+      "actual": null,
+      "expected": null,
+      "pass": true
+    },
+    {
+      "id": "empty-search-ashby-search",
+      "actual": "United States",
+      "expected": "United States",
+      "pass": true
+    },
+    {
+      "id": "recognized-clear-undo-ashby-search",
+      "actual": null,
+      "expected": null,
+      "pass": true
+    },
+    {
+      "id": "engine-verified-text",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "undo-preserves-user-edit",
+      "actual": "My correction",
+      "expected": "My correction",
+      "pass": true
+    },
+    {
+      "id": "undo-restores-untouched",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "inflight-user-edit-kept",
+      "actual": "Later edit",
+      "expected": "Later edit",
+      "pass": true
+    },
+    {
+      "id": "inflight-user-edit-not-verified",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "engine-rejects-stale-count",
+      "actual": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "id": "stale-before-zero-writes",
+      "actual": {
+        "ok": false,
+        "value": "",
+        "attempted": false
+      },
+      "expected": {
+        "ok": false,
+        "value": "",
+        "attempted": false
+      },
+      "pass": true
+    },
+    {
+      "id": "cancel-before-zero-writes",
+      "actual": {
+        "ok": false,
+        "value": "",
+        "attempted": false
+      },
+      "expected": {
+        "ok": false,
+        "value": "",
+        "attempted": false
+      },
+      "pass": true
+    },
+    {
+      "id": "detached-before-zero-writes",
+      "actual": {
+        "ok": false,
+        "value": "",
+        "attempted": false
+      },
+      "expected": {
+        "ok": false,
+        "value": "",
+        "attempted": false
+      },
+      "pass": true
+    },
+    {
+      "id": "recognized-repeat-added",
+      "actual": 2,
+      "expected": 2,
+      "pass": true
+    },
+    {
+      "id": "repeat-correct-entity",
+      "actual": [
+        "Example Labs",
+        "Software Engineer",
+        "Earlier Labs",
+        "Developer"
+      ],
+      "expected": [
+        "Example Labs",
+        "Software Engineer",
+        "Earlier Labs",
+        "Developer"
+      ],
+      "pass": true
+    },
+    {
+      "id": "reorder-does-not-cross-entity",
+      "actual": "Earlier Labs",
+      "expected": "Earlier Labs",
+      "pass": true
+    },
+    {
+      "id": "repeat-undo-keeps-later-edit",
+      "actual": 2,
+      "expected": 2,
+      "pass": true
+    },
+    {
+      "id": "unknown-add-not-clicked",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "untouched-added-repeat-reversible",
+      "actual": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "id": "nested-frame-verified",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "nested-frames-reported",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "invalid-step-no-next",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "steps-zero-submit",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "id": "submit-typed-next-never-clicked",
+      "actual": {
+        "blocked": true,
+        "clicked": 0,
+        "submitted": 0
+      },
+      "expected": {
+        "blocked": true,
+        "clicked": 0,
+        "submitted": 0
+      },
+      "pass": true
+    },
+    {
+      "id": "supported-verified-success-at-least-99-percent",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    }
+  ],
+  "attempts": [
+    {
+      "id": "text",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "paragraph",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "email",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "number",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "date",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "multi",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "rich",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "not_exposed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "check",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "radiogroup",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "checkboxgroup",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "dategroup",
+      "verified": true,
+      "verification": {
+        "status": "verified",
+        "writeAttempted": true,
+        "domAccepted": true,
+        "validation": "passed",
+        "reason": "canonical_value_persistent"
+      }
+    },
+    {
+      "id": "upload",
+      "verified": true
+    },
+    {
+      "id": "workday-button",
+      "verified": true
+    },
+    {
+      "id": "workday-searchable",
+      "verified": true
+    },
+    {
+      "id": "workday-delayed",
+      "verified": true
+    },
+    {
+      "id": "workday-portal",
+      "verified": true
+    },
+    {
+      "id": "workday-virtual",
+      "verified": true
+    },
+    {
+      "id": "workday-hierarchical",
+      "verified": true
+    },
+    {
+      "id": "workday-chips",
+      "verified": true
+    },
+    {
+      "id": "workday-employer-a",
+      "verified": true
+    },
+    {
+      "id": "workday-employer-b",
+      "verified": true
+    },
+    {
+      "id": "ashby-search",
+      "verified": true
+    }
+  ],
+  "metrics": {
+    "attempts": 22,
+    "verified": 22,
+    "success": 1
+  },
+  "passed": true,
+  "limitations": [
+    "Fixed 450ms verification window cannot prove server acceptance or arbitrarily delayed rejection.",
+    "Workday structural variants are synthetic; multiple live employers remain open.",
+    "Rejected/stale/user-edit cases are separate from supported success denominator.",
+    "No human timing or live provider calls."
+  ]
+}

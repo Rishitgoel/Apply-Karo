@@ -5,10 +5,12 @@
   "description": "One-key autofill for job applications. Detects fields on real ATS forms, tracks what you applied to, and stays out of the way everywhere else.",
   "minimum_chrome_version": "109",
 
-  "permissions": ["storage", "unlimitedStorage", "activeTab"],
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting"],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
-    "https://api.groq.com/*"
+    "https://api.groq.com/*",
+    "http://*/*",
+    "https://*/*"
   ],
 
   "icons": {
@@ -33,11 +35,6 @@
   ],
 
   "web_accessible_resources": [
-    {
-      "resources": ["src/engine/*.js", "src/shared/*.js"],
-      "matches": ["http://*/*", "https://*/*"],
-      "use_dynamic_url": true
-    },
     {
       "resources": ["fonts/InterVariable.woff2"],
       "matches": ["http://*/*", "https://*/*"],

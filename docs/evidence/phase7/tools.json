@@ -1,0 +1,75 @@
+{
+  "evidenceKind": "synthetic-recorder-ui-test",
+  "checks": [
+    {
+      "id": "incomplete-pair-not-saved",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "review-required-before-stopping",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "observer-required",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "invalid-error-counts-rejected",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "valid-pair-saved",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "records-both-methods",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "elapsed-includes-wait",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "workload-even-mix",
+      "actual": {
+        "Workday": 10,
+        "Keka": 10,
+        "Other": 10
+      },
+      "expected": {
+        "Workday": 10,
+        "Keka": 10,
+        "Other": 10
+      },
+      "pass": true
+    },
+    {
+      "id": "one-ui-test-does-not-prove-target",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "narrow-screen-no-horizontal-overflow",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    }
+  ],
+  "passed": true,
+  "humanTrialsPerformed": 0
+}

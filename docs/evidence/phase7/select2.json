@@ -1,0 +1,137 @@
+{
+  "bundleHash": "2a32a7668360872e2b3ece810f8d6c57f79f6be5ef9aba50f6940c76fd01501f",
+  "results": [
+    {
+      "id": "first",
+      "actual": "Avery",
+      "expected": "Avery",
+      "pass": true
+    },
+    {
+      "id": "last",
+      "actual": "Shah",
+      "expected": "Shah",
+      "pass": true
+    },
+    {
+      "id": "location",
+      "actual": "New Delhi",
+      "expected": "New Delhi",
+      "pass": true
+    },
+    {
+      "id": "linkedin",
+      "actual": "https://linkedin.com/in/example-candidate",
+      "expected": "https://linkedin.com/in/example-candidate",
+      "pass": true
+    },
+    {
+      "id": "college",
+      "actual": "Example University",
+      "expected": "Example University",
+      "pass": true
+    },
+    {
+      "id": "major",
+      "actual": "Computer Science",
+      "expected": "Computer Science",
+      "pass": true
+    },
+    {
+      "id": "prefix",
+      "actual": "+91",
+      "expected": "+91",
+      "pass": true
+    },
+    {
+      "id": "mobile",
+      "actual": "9876543210",
+      "expected": "9876543210",
+      "pass": true
+    },
+    {
+      "id": "tenth",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "percent",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "language",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "video",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "captcha",
+      "actual": "",
+      "expected": "",
+      "pass": true
+    },
+    {
+      "id": "linkedin-valid",
+      "actual": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "id": "consent-untouched",
+      "actual": false,
+      "expected": false,
+      "pass": true
+    },
+    {
+      "id": "no-submissions",
+      "actual": 0,
+      "expected": 0,
+      "pass": true
+    }
+  ],
+  "outcome": {
+    "ok": true,
+    "frames": [
+      {
+        "frameId": 0,
+        "documentId": "8F9F9FE15CD0C18A49342A28915BD221",
+        "surface": {
+          "frames": [],
+          "openShadowRoots": 0,
+          "uninspectableHosts": 0
+        },
+        "url": "http://127.0.0.1:49384/reported-keka"
+      }
+    ],
+    "runId": "d961e66a-9634-492d-8bc4-5c2bd1bfccaa",
+    "tabId": 1188218637,
+    "documentId": "8F9F9FE15CD0C18A49342A28915BD221",
+    "state": "needs_attention",
+    "startedAt": 1791381086911,
+    "updatedAt": 1791381089120,
+    "deadline": 1791381206911,
+    "filled": 9,
+    "total": 15,
+    "empty": 6,
+    "error": "6 field(s) still need an answer. AI autofill is switched off in the dashboard.",
+    "detail": "Checking fields…",
+    "drafts": 0,
+    "deferred": 0,
+    "aiError": "6 field(s) still need an answer. AI autofill is switched off in the dashboard."
+  },
+  "passed": true,
+  "evidenceKind": "screenshot-label-reconstruction-real-unpacked-extension",
+  "limitations": [
+    "Screenshot reconstruction; original site DOM and stored profile not supplied.",
+    "Synthetic facts and no live requests; no user data copied or submissions."
+  ]
+}

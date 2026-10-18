@@ -1,0 +1,321 @@
+{
+  "results": [
+    {
+      "id": "toolbar-cold-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass",
+      "footer": "Filled 2 of 2 fields. Review before submitting."
+    },
+    {
+      "id": "on-page-after-cold-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "diagnostics-export-redacted",
+      "finding": "Phase0",
+      "expected": true,
+      "actual": true,
+      "status": "pass",
+      "events": 20
+    },
+    {
+      "id": "diagnostics-opt-out-clears",
+      "finding": "Phase0",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass"
+    },
+    {
+      "id": "toolbar-warm-start",
+      "finding": "F14",
+      "expected": {
+        "value": "Avery",
+        "completed": true
+      },
+      "actual": {
+        "value": "Avery",
+        "completed": true
+      },
+      "status": "pass",
+      "footer": "Filled 2 of 2 fields. Review before submitting.",
+      "logs": [
+        "Apply karo [top frame]: filling — 2 fields to work through…",
+        "Apply karo [top frame]: 2/2 fields in 468ms — manual pass"
+      ]
+    },
+    {
+      "id": "popup-closure-during-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "delayed-engine-start",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "repeated-starts-complete",
+      "finding": "F14",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass",
+      "replies": [
+        {
+          "ok": true,
+          "frames": [
+            {
+              "frameId": 0,
+              "documentId": "8592717B0F122B0C13A97AC20AFA5EA5",
+              "surface": {
+                "frames": [],
+                "openShadowRoots": 0,
+                "uninspectableHosts": 0
+              },
+              "url": "http://127.0.0.1:54179/neutral/warm"
+            }
+          ],
+          "runId": "0fb21bc7-cc61-447d-8b5f-5309a0def144",
+          "tabId": 599622561,
+          "documentId": "8592717B0F122B0C13A97AC20AFA5EA5",
+          "state": "completed",
+          "startedAt": 1791354298254,
+          "updatedAt": 1791354300275,
+          "deadline": 1791354418254,
+          "filled": 2,
+          "total": 2,
+          "empty": 0,
+          "error": "",
+          "detail": "Checking fields…",
+          "drafts": 0,
+          "deferred": 0,
+          "aiError": ""
+        },
+        {
+          "ok": true,
+          "frames": [
+            {
+              "frameId": 0,
+              "documentId": "8592717B0F122B0C13A97AC20AFA5EA5",
+              "surface": {
+                "frames": [],
+                "openShadowRoots": 0,
+                "uninspectableHosts": 0
+              },
+              "url": "http://127.0.0.1:54179/neutral/warm"
+            }
+          ],
+          "runId": "0fb21bc7-cc61-447d-8b5f-5309a0def144",
+          "tabId": 599622561,
+          "documentId": "8592717B0F122B0C13A97AC20AFA5EA5",
+          "state": "completed",
+          "startedAt": 1791354298254,
+          "updatedAt": 1791354300275,
+          "deadline": 1791354418254,
+          "filled": 2,
+          "total": 2,
+          "empty": 0,
+          "error": "",
+          "detail": "Checking fields…",
+          "drafts": 0,
+          "deferred": 0,
+          "aiError": ""
+        }
+      ]
+    },
+    {
+      "id": "unknown-certification-zero-model-requests",
+      "finding": "Phase4",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass"
+    },
+    {
+      "id": "unconfirmed-ai-memory",
+      "finding": "F3",
+      "expected": false,
+      "actual": false,
+      "status": "pass",
+      "requests": 0,
+      "value": ""
+    },
+    {
+      "id": "sensitive-policy-all-sources",
+      "finding": "F8",
+      "expected": 0,
+      "actual": 0,
+      "status": "pass",
+      "value": "",
+      "note": "Skipped sensitive fields must not be sent to the provider."
+    },
+    {
+      "id": "inline-preserves-inflight-edit",
+      "finding": "F7",
+      "expected": "My edit while AI was generating.",
+      "actual": "My edit while AI was generating.",
+      "status": "pass"
+    },
+    {
+      "id": "inline-supported-draft-written",
+      "finding": "Phase1",
+      "expected": "I built internal tools at Example Labs.",
+      "actual": "I built internal tools at Example Labs.",
+      "status": "pass",
+      "generated": {
+        "answer": "I built internal tools at Example Labs.",
+        "ok": true
+      }
+    },
+    {
+      "id": "inline-undo-preserves-later-edit",
+      "finding": "Phase1",
+      "expected": "My later correction.",
+      "actual": "My later correction.",
+      "status": "pass"
+    },
+    {
+      "id": "legacy-memory-quarantined",
+      "finding": "Phase1",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "legacy-explicit-confirmation",
+      "finding": "Phase1",
+      "expected": "user-confirmed",
+      "actual": "user-confirmed",
+      "status": "pass"
+    },
+    {
+      "id": "confirmed-memory-reused",
+      "finding": "Phase1",
+      "expected": "Legacy Avery",
+      "actual": "Legacy Avery",
+      "status": "pass"
+    },
+    {
+      "id": "embedded-frame-start-ready",
+      "finding": "Phase1",
+      "expected": {
+        "value": "Avery",
+        "frames": 2
+      },
+      "actual": {
+        "value": "Avery",
+        "frames": 2
+      },
+      "status": "pass"
+    },
+    {
+      "id": "claimed-frame-exception-terminal",
+      "finding": "Phase1",
+      "expected": true,
+      "actual": true,
+      "status": "pass",
+      "result": {
+        "ok": true,
+        "frames": [
+          {
+            "frameId": 0,
+            "documentId": "D6F64B65C4A67889E1A9C6B2AD06EE21",
+            "surface": {
+              "frames": [],
+              "openShadowRoots": 0,
+              "uninspectableHosts": 0
+            },
+            "url": "http://127.0.0.1:54179/neutral/warm"
+          }
+        ],
+        "runId": "c4155b50-9334-42dd-bfb1-c456fa145bc4",
+        "tabId": 599622605,
+        "documentId": "D6F64B65C4A67889E1A9C6B2AD06EE21",
+        "state": "needs_attention",
+        "startedAt": 1791354309937,
+        "updatedAt": 1791354311958,
+        "deadline": 1791354429937,
+        "filled": 0,
+        "total": 0,
+        "empty": 0,
+        "error": "Synthetic context failure",
+        "detail": "",
+        "drafts": 0,
+        "deferred": 0,
+        "aiError": "Synthetic context failure"
+      }
+    },
+    {
+      "id": "frame-exception-retry-clears-busy",
+      "finding": "Phase1",
+      "expected": "Avery",
+      "actual": "Avery",
+      "status": "pass"
+    },
+    {
+      "id": "inline-question-refresh",
+      "finding": "F6",
+      "expected": true,
+      "actual": true,
+      "status": "pass",
+      "questionText": "Question: Describe your Java experience.\nView full question\nCorrect detected question"
+    },
+    {
+      "id": "all-81-fields-accounted-for",
+      "finding": "F10",
+      "expected": 81,
+      "actual": 81,
+      "status": "pass",
+      "requests": 11
+    },
+    {
+      "id": "unknown-declarations-not-guessed",
+      "finding": "Phase1",
+      "expected": {
+        "license": "",
+        "citizenship": "",
+        "consent": false
+      },
+      "actual": {
+        "license": "",
+        "citizenship": "",
+        "consent": false
+      },
+      "status": "pass"
+    },
+    {
+      "id": "job-context-bound-to-application",
+      "finding": "F12",
+      "expected": false,
+      "actual": false,
+      "status": "pass",
+      "requests": 1,
+      "note": "Worker request with absent application context; no live page identity claim."
+    },
+    {
+      "id": "custom-widget-correction-learning",
+      "finding": "F13",
+      "expected": true,
+      "actual": false,
+      "status": "failing_contract"
+    },
+    {
+      "id": "missing-frame-result-bounded",
+      "finding": "F14",
+      "expected": false,
+      "actual": false,
+      "status": "pass",
+      "elapsedMs": 8791,
+      "note": "Test deadline 12 seconds; production coordinator ceiling is 120 seconds. Result loss deliberately injected."
+    }
+  ],
+  "scopedPassed": true,
+  "knownFailureExcluded": "F13 custom-widget correction learning; tracked for Phase 6"
+}

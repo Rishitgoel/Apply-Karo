@@ -14,6 +14,7 @@
 // whole engine against a live chrome.* environment.
 
 import { realClick } from "./fill.js";
+import { hasExistingUpload, isComboboxFilled, COMBO_PLACEHOLDER_RE } from "./scan.js";
 
 const ADVANCE_RE = /\b(next|continue|proceed|save and continue|save & continue|next step|go to)\b/i;
 const SUBMIT_RE = /\b(submit|apply now|send application|finish|complete application|agree and|accept and|confirm and)\b/i;
@@ -36,10 +37,8 @@ const STEP_MARKERS =
 /**
  * Does the page actually present itself as a multi-step flow?
  *
- * Used to decide whether a `type="submit"` control may be clicked at all. On a
- * genuine wizard such a button advances a step; on a single-page form the same
- * markup sends the application. Without positive evidence of steps, we do not
- * take that chance.
+ * Step evidence is available for review. A submit-typed Next still requires
+ * manual action because its handler can finalize an application.
  */
 export function hasStepIndicator(root = document) {
   if (root.querySelector?.(STEP_MARKERS)) return true;
@@ -71,13 +70,10 @@ export function findAdvanceButton(root = document, ownUi = "#applykaro-root") {
     if (isSubmitLike(text)) continue;              // guard 1 — never, under any label
     if (!ADVANCE_RE.test(text)) continue;
 
-    // Guard 1b: a submit-typed control posts the form. That is how a step
-    // advances on some wizards and how an application is sent on every ordinary
-    // form — and the two are indistinguishable from the button alone. Only
-    // trust it when the page itself says there are steps.
+    // Submit-typed controls require manual action even on a wizard.
     const submits = el.type === "submit" || (el.tagName === "BUTTON" && el.type !== "button" && el.form);
-    if (submits && !hasStepIndicator(document)) {
-      blocked = `"${text}" submits the form and this page shows no step indicator — click it yourself.`;
+    if (submits) {
+      blocked = `"${text}" can submit the form — review and click it yourself.`;
       continue;
     }
 
@@ -90,6 +86,10 @@ export function findAdvanceButton(root = document, ownUi = "#applykaro-root") {
 /** Required controls the page still considers empty. */
 export function requiredEmpty(root = document, ownUi = "#applykaro-root") {
   const out = [];
+  for (const el of root.querySelectorAll('input,select,textarea,[aria-invalid="true"]')) {
+    if (el.disabled || el.type === "hidden" || el.closest?.(ownUi) || el.getClientRects && !el.getClientRects().length) continue;
+    if (el.validity?.valid === false || el.getAttribute?.("aria-invalid") === "true") out.push(el);
+  }
   for (const el of root.querySelectorAll('[required],[aria-required="true"]')) {
     const t = (el.type || "").toLowerCase();
     if (el.disabled || t === "hidden") continue;
@@ -103,12 +103,25 @@ export function requiredEmpty(root = document, ownUi = "#applykaro-root") {
       } else if (el.checked) continue;
       out.push(el);
     } else if (t === "file") {
-      if (!el.files?.length) out.push(el);
-    } else if (!String(el.value || "").trim()) {
-      out.push(el);
+      if (!el.files?.length && !hasExistingUpload(el)) out.push(el);
+    } else if (el.tagName === "SELECT") {
+      const opt = el.options?.[el.selectedIndex];
+      const isPlaceholder = !opt || !el.value || COMBO_PLACEHOLDER_RE.test(opt.text || "") || /^(--\s*)?(select|choose|please select)/i.test(opt.text || "");
+      if (el.selectedIndex < 0 || isPlaceholder || !el.value) out.push(el);
+    } else {
+      const role = (el.getAttribute?.("role") || "").toLowerCase();
+      if (role === "radio" || role === "checkbox" || role === "switch" || role === "option") {
+        if (el.getAttribute("aria-checked") !== "true" && el.getAttribute("aria-selected") !== "true") out.push(el);
+      } else if (role === "radiogroup" || role === "listbox") {
+        if (!el.querySelector?.('[aria-checked="true"],[aria-selected="true"]')) out.push(el);
+      } else if (role === "combobox" || el.tagName === "BUTTON" || el.matches?.('[aria-haspopup="listbox"],[data-automation-id*="prompt"]')) {
+        if (!isComboboxFilled(el)) out.push(el);
+      } else if (!String(el.value != null && el.value !== "" ? el.value : (el.textContent || "")).trim()) {
+        out.push(el);
+      }
     }
   }
-  return out;
+  return [...new Set(out)];
 }
 
 /** Resolve once the page swaps in different controls, or false on timeout. */
@@ -144,10 +157,12 @@ export async function runSteps(fillStep, opts = {}) {
   let steps = 0;
 
   for (let i = 0; i < max; i++) {
+    if (opts.isCancelled?.()) { trail.push("Stopped — fill interrupted."); break; }
     const res = await fillStep();
     filled += res.filled;
     trail.push(`Step ${i + 1}: filled ${res.filled} of ${res.total}`);
 
+    if (res.verificationRejected || opts.isCancelled?.()) { trail.push("Stopped — review rejected or interrupted fields."); break; }
     const missing = requiredEmpty();
     if (missing.length) {                          // guard 2
       trail.push(`Stopped — ${missing.length} required field(s) still empty.`);
